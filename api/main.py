@@ -1,11 +1,14 @@
 import io
 
+from starlette.responses import FileResponse
+
 from data import ADSBData
 from fastapi import FastAPI, Response
 from fastapi_cache import FastAPICache
 from fastapi_cache.decorator import cache
 from fastapi_cache.backends.inmemory import InMemoryBackend
 from starlette.middleware.cors import CORSMiddleware
+from starlette.requests import Request
 
 app = FastAPI(
     title="DUMP1090 PSQL API",
@@ -33,7 +36,8 @@ async def get_cache():
     '/liveflights',
     summary="Get currently detected flights",
 )
-async def flights():
+async def flights(request: Request):
+    data.base_url = request.headers['referer']
     return data.get_live_flights()
 
 
@@ -60,8 +64,8 @@ async def flights():
     summary="Get aircrafttypes",
 )
 @cache(expire=60)
-async def aircrafttypes():
-    return data.get_aircrafttypes()
+async def aircrafttypes(by_family: bool = True):
+    return data.get_aircrafttypes(by_family)
 
 
 @app.get(
@@ -74,13 +78,21 @@ async def registrations():
 
 
 @app.get(
-    '/icon.svg',
-    summary="Get icons of aircraft",
+    '/ac_icon.svg',
+    summary="Get icons of an aircraft category",
 )
-async def icons(category: str = 'airliner', color: str = '#a434eb'):
-    icon_svg = data.get_icon(category, color)
+async def icons(category: str = None, adsb_category: str = None, color: str = None):
+    icon_svg = data.get_ac_icon(category, adsb_category, color)
     return Response(content=icon_svg, media_type="image/svg+xml")
-    # return FileResponse(icon_svg, media_type="image/svg")
+
+
+@app.get(
+    '/airline_icon.svg',
+    summary="Get icon of an airline",
+)
+async def icons(iata: str = 'KL'):
+    icon_png = data.get_airline_icon(iata)
+    return FileResponse(icon_png)
 
 
 

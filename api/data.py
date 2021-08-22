@@ -66,10 +66,18 @@ class ADSBData:
                 ac['flight'] = ac['flight'].strip()
                 ac['route'] = self.get_route(ac['flight'])
 
+                if ac['route'] is not None:
+                    iata = ac['route']['airline_iata']
+
+                    if self.get_airline_icon(iata) is not None:
+                        ac['airline_icon'] = self.base_url + f"airline_icon.svg?iata={iata}"
+
             ac_type = self.get_aircraft(ac['hex'])
             if ac_type is not None:
                 ac['registration'] = ac_type['registration']
                 ac['aircrafttype'] = ac_type['aircrafttype']
+                ac['icon_category'] = ac_type['category']
+                ac['country'] = ac_type['country']
 
         return response_json
 
@@ -93,11 +101,26 @@ class ADSBData:
             'data': self.cur.fetchall(),
         }
 
-    def get_aircrafttypes(self) -> dict:
-        self.cur.execute("select distinct aircrafttype, count(*) from flightdata where aircrafttype != '' group by aircrafttype")
+    def get_aircrafttypes(self, by_family: bool = False) -> dict:
         aircrafttypes = {}
-        for x in self.cur.fetchall():
-            aircrafttypes[x['aircrafttype']] = x['count']
+        if not by_family:
+            self.cur.execute("select distinct aircrafttype, count(*) from flightdata where aircrafttype != '' group by aircrafttype")
+
+            for x in self.cur.fetchall():
+                aircrafttypes[x['aircrafttype']] = x['count']
+        else:
+            self.cur.execute("select aircrafttype, count(*) from flightdata where aircrafttype != '' group by aircrafttype")
+
+            for x in self.cur.fetchall():
+                if x['aircrafttype'] in self.ac_families:
+                    family_name = self.ac_families[x['aircrafttype']]
+                else:
+                    family_name = 'Other'
+
+                if family_name not in aircrafttypes:
+                    aircrafttypes[family_name] = 0
+
+                aircrafttypes[family_name] += x['count']
 
         return {
             'data': aircrafttypes,
@@ -131,31 +154,64 @@ class ADSBData:
 
         self.cur.execute("select * from aircraftdata where icao=%(icao)s", {'icao': icao})
         aircraft = self.cur.fetchone()
-        print(icao, aircraft)
         self.cached_aircraft[icao] = aircraft
         return aircraft
 
-    def get_icon(self, category: str, color: str) -> str:
-        with open('data/ac_icons.json', 'r') as f:
-            icons = json.load(f)
+    def get_ac_icon(self, category: str, adsb_category: str, color: str = None) -> str:
+        if category not in self.ac_icons or category == 'unknown':
+            if adsb_category in self.ac_categories['adsb_categories']:
+                category = self.ac_categories['adsb_categories'][adsb_category]
+            else:
+                category = 'unknown'
 
-            if category not in icons:
-                raise ValueError(f'Category {category} does not exist.')
+        if color is None:
+            if 'color' in self.ac_icons[category]:
+                color = self.ac_icons[category]['color']
+            else:
+                color = '#f2ff00'
 
-            icon = icons[category]['svg']
-            icon = icon.replace('aircraft_color_fill', color)
-            icon = icon.replace('aircraft_color_stroke', '"#FFFFFF"')
-            icon = icon.replace('add_stroke_selected', '')
-            return icon
+        icon = self.ac_icons[category]['svg']
+        icon = icon.replace('aircraft_color_fill', color)
+        icon = icon.replace('aircraft_color_stroke', '"#FFFFFF"')
+        icon = icon.replace('add_stroke_selected', '')
+        return icon
+
+    def get_airline_icon(self, iata: str) -> str:
+        iata = iata.upper()
+
+        if len(iata) != 2:
+            print(f'IATA Code {iata} is invalid. IATA codes consist of two letters (e.g. KL).')
+            return None
+
+        size = 64
+        cache_path = f'data/logos/{iata}-{size}.png'
+        cache_path_404 = f'{cache_path}.404'
+
+        if os.path.exists(cache_path_404):
+            return None
+
+        if not os.path.exists(cache_path):
+            response = requests.get(f'https://images.kiwi.com/airlines/{size}/{iata}.png', stream=True)
+
+            if response.ok:
+                with open(cache_path, 'wb') as f:
+                    for chunk in response:
+                        f.write(chunk)
+            else:
+                print(f'Could not retrieve logo for airline: {iata}')
+                with open(cache_path_404, 'w') as f:
+                    f.write(response.content)
+
+        return cache_path
 
     def get_category(self, ac_type_icao: str) -> str:
         if ac_type_icao == '':
             return None
 
-        if ac_type_icao not in self.ac_categories:
+        if ac_type_icao not in self.ac_categories['ac_types']:
             return 'unknown'
 
-        return self.ac_categories[ac_type_icao]
+        return self.ac_categories['ac_types'][ac_type_icao]
 
     def get_family(self, ac_type_icao: str) -> str:
         if ac_type_icao == '':
@@ -192,7 +248,11 @@ class ADSBData:
         return country.alpha_2
 
     def get_country(self, ac_icao: str) -> str:
-        icao_code_hex = int(ac_icao, 16)
+        try:
+            icao_code_hex = int(ac_icao, 16)
+        except ValueError:
+            print(f'Error: "{ac_icao}" is not a valid hex code.')
+            return None
 
         for range in self.ac_countries:
             if icao_code_hex >= int(range['start'], 16) and icao_code_hex <= int(range['end'], 16):

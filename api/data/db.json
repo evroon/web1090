@@ -57,7 +57,19 @@
         "aircrafttype": "TEXT",
         "category": "TEXT",
         "country": "TEXT",
-        "family": "TEXT"
+        "family": "TEXT",
+        "airline_iata": "TEXT",
+        "plane_owner": "TEXT",
+        "model_name": "TEXT",
+        "model_code": "TEXT",
+        "production_line": "TEXT",
+        "delivery_date": "TIMESTAMPTZ",
+        "first_flight_date": "TIMESTAMPTZ",
+        "registration_date": "TIMESTAMPTZ",
+        "rollout_date": "TIMESTAMPTZ",
+        "active": "BOOL",
+        "favorite": "BOOL",
+        "needs_update": "BOOL"
     },
     "airportdata_columns": {
         "icao": "TEXT PRIMARY KEY",

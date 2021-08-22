@@ -18,6 +18,7 @@
     "A338": "A330",
     "A339": "A330",
     "A3ST": "A330",
+    "A337": "A330",
 
     "A342": "A340",
     "A343": "A340",
@@ -47,6 +48,7 @@
     "B738": "B737 NG",
     "B739": "B737 NG",
     "B38M": "B737 MAX",
+    "B39M": "B737 MAX",
 
     "B741": "B747",
     "B742": "B747",
@@ -78,11 +80,21 @@
     "DC10": "DC10",
     "MD11": "MD11",
 
+    "E75S": "Embraer",
+    "E75L": "Embraer",
+    "E110": "Embraer",
+    "E120": "Embraer",
+    "E121": "Embraer",
     "E135": "Embraer",
     "E145": "Embraer",
     "E170": "Embraer",
     "E190": "Embraer",
+    "E195": "Embraer",
+    "E290": "Embraer",
+    "E295": "Embraer",
     "E550": "Embraer",
+    "E50P": "Embraer",
+    "E55P": "Embraer",
     "E45X": "Embraer",
 
     "B461": "BAe-146",
@@ -131,6 +143,9 @@
     "MD87": "MD80",
     "MD88": "MD80",
 
+    "B350": "Beech",
+    "BE20": "Beech",
+    "BE40": "Beech",
 
     "A37": "Military",
     "A400": "Military",
