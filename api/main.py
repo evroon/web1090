@@ -37,7 +37,6 @@ async def get_cache():
     summary="Get currently detected flights",
 )
 async def flights(request: Request):
-    data.base_url = request.headers['referer']
     return data.get_live_flights()
 
 

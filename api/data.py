@@ -70,7 +70,7 @@ class ADSBData:
                     iata = ac['route']['airline_iata']
 
                     if self.get_airline_icon(iata) is not None:
-                        ac['airline_icon'] = self.base_url + f"airline_icon.svg?iata={iata}"
+                        ac['airline_icon'] = f"airline_icon.svg?iata={iata}"
 
             ac_type = self.get_aircraft(ac['hex'])
             if ac_type is not None:

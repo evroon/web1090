@@ -7,8 +7,12 @@ function UpdateStatistics(data) {
 
 $(function () {
     'use strict'
+    var api_domain = "";
 
-    var api_domain = '<domain name>'
+    fetch('/config.json')
+        .then(response => response.json())
+        .then(data => api_domain = data.api_root_url)
+        .then(UpdateAll());
 
     if ($('#world-map').length > 0) {
         var map = L.map('world-map').setView([52.15, 4.8], 8);
@@ -118,7 +122,7 @@ $(function () {
             var route_description = undefined
 
             if (flight.airline_icon != null)
-                tooltip += `<img style="width: 32px; height: auto; margin-right: 8px;" src="${flight.airline_icon}"></img>`
+                tooltip += `<img style="width: 32px; height: auto; margin-right: 8px;" src="${api_domain + flight.airline_icon}"></img>`
 
             if (flight.flight != null)
                 tooltip += `<b title="${flight.airline_name}">${flight.flight}</b></br>`
@@ -135,7 +139,7 @@ $(function () {
             if (flight.aircrafttype != null)
                 tooltip += `${flight.aircrafttype}</br>`;
 
-            var icon_url = api_domain + `/ac_icon.svg?category=${flight.icon_category}&adsb_category=${flight.category}`;
+            var icon_url = api_domain + `ac_icon.svg?category=${flight.icon_category}&adsb_category=${flight.category}`;
 
             if (flight.lat != null) {
                 var ac_marker = null;
@@ -178,7 +182,7 @@ $(function () {
                 flight.flight = `<span title="${flight.route.airline_name}">${flight.flight}</span>`;
 
             if (flight.airline_icon != null)
-                flight.flight = `<img style="width: 24px; height: auto; margin-right: 8px;" src="${flight.airline_icon}"></img>` + flight.flight;
+                flight.flight = `<img style="width: 24px; height: auto; margin-right: 8px;" src="${api_domain + flight.airline_icon}"></img>` + flight.flight;
 
             if (flight.registration != null)
                 flight.registration = `<span style="width: 24px; height: auto; margin-right: 4px;" class="flag-icon flag-icon-${flight.country.toLowerCase()}"></span> ${flight.registration}`;
@@ -202,26 +206,24 @@ $(function () {
         if ($('#world-map').length < 1)
             return;
 
-        fetch(api_domain + '/liveflights')
+        fetch(api_domain + 'liveflights')
             .then(response => response.json())
             .then(data => UpdateLiveFlights(data.aircraft));
     }
 
     function UpdateAll() {
         if ($('#ac-type-chart').length > 0) {
-            fetch(api_domain + '/aircrafttypes')
+            fetch(api_domain + 'aircrafttypes')
                 .then(response => response.json())
                 .then(data => UpdateAircraftTypes(data.data));
         }
 
         setInterval(RefreshFlights, 1000);
 
-        fetch(api_domain + '/statistics')
+        fetch(api_domain + 'statistics')
             .then(response => response.json())
             .then(data => UpdateStatistics(data));
     }
-
-    UpdateAll();
 
     // Make the dashboard widgets sortable Using jquery UI
     $('.connectedSortable').sortable({
