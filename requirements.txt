@@ -1,1 +1,5 @@
 fastapi
+uvicorn
+starlette
+pycountry
+fastapi-cache2
