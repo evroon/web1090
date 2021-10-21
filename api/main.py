@@ -3,7 +3,7 @@ import io
 from starlette.responses import FileResponse
 
 from data import ADSBData
-from fastapi import FastAPI, Response
+from fastapi import FastAPI, Response, Query, BackgroundTasks
 from fastapi_cache import FastAPICache
 from fastapi_cache.decorator import cache
 from fastapi_cache.backends.inmemory import InMemoryBackend
@@ -36,7 +36,8 @@ async def get_cache():
     '/liveflights',
     summary="Get currently detected flights",
 )
-async def flights(request: Request):
+async def flights(background_tasks: BackgroundTasks):
+    data.background_tasks = background_tasks
     return data.get_live_flights()
 
 
@@ -80,8 +81,8 @@ async def registrations():
     '/ac_icon.svg',
     summary="Get icons of an aircraft category",
 )
-async def icons(category: str = None, adsb_category: str = None, color: str = None):
-    icon_svg = data.get_ac_icon(category, adsb_category, color)
+async def icons(category: str = None, adsb_category: str = None, color: str = None, is_selected: bool = False):
+    icon_svg = data.get_ac_icon(category, adsb_category, color, is_selected)
     return Response(content=icon_svg, media_type="image/svg+xml")
 
 
@@ -93,6 +94,18 @@ async def icons(iata: str = 'KL'):
     icon_png = data.get_airline_icon(iata)
     return FileResponse(icon_png)
 
+
+@app.get(
+    '/image',
+    summary="Get aircraft image",
+)
+async def image(
+    icao: str = Query(None, title='test', description='ICAO hex code of aircraft'),
+    i: int = Query(0, description='index of the image'),
+    as_thumbnail: bool = Query(False, description='Load as thumbnail or as full image')
+):
+    image_png = data.get_aircraft_image(icao, i, as_thumbnail)
+    return FileResponse(image_png)
 
 
 @app.on_event("startup")

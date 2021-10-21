@@ -46,6 +46,7 @@
     },
     "aircraft_image_columns": {
         "id": "SERIAL PRIMARY KEY",
+        "number": "SERIAL",
         "icao": "TEXT NOT NULL",
         "image_url": "TEXT NOT NULL",
         "thumbnail_url": "TEXT",
@@ -67,6 +68,9 @@
         "first_flight_date": "TIMESTAMPTZ",
         "registration_date": "TIMESTAMPTZ",
         "rollout_date": "TIMESTAMPTZ",
+        "last_seen_date": "TIMESTAMPTZ",
+        "aviationstack_id": "SERIAL",
+        "has_no_images": "BOOL",
         "active": "BOOL",
         "favorite": "BOOL",
         "needs_update": "BOOL"

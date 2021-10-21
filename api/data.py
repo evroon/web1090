@@ -5,23 +5,30 @@ import requests
 import json
 import pycountry
 
+from collector import Collector
+
 
 PSQL_DB=os.getenv('PSQL_DB')
+PSQL_PORT=os.getenv('PSQL_PORT')
 PSQL_USER=os.getenv('PSQL_USER')
 PSQL_PASSWORD=os.getenv('PSQL_PASSWORD')
 
 class ADSBData:
     def __init__(self) -> None:
+        self.collector = Collector(self)
+
         self.con = psycopg2.connect(
             database=PSQL_DB,
             user=PSQL_USER,
             password=PSQL_PASSWORD,
             host="127.0.0.1",
-            port="5432"
+            port=PSQL_PORT
         )
         self.cur = self.con.cursor(cursor_factory = psycopg2.extras.RealDictCursor)
         self.cached_routes = {}
         self.cached_aircraft = {}
+        self.background_tasks = None
+        self.image_requests = []
 
         with open('data/country_aliases.json', 'r') as f:
             self.country_aliases = json.load(f)
@@ -40,6 +47,9 @@ class ADSBData:
 
         self.country_ids = {}
 
+    def get_cursor(self):
+        return self.con.cursor(cursor_factory = psycopg2.extras.RealDictCursor)
+
     def get_statistics(self) -> dict:
         live_flights = self.get_live_flights()
         flights = self.get_flights()
@@ -47,11 +57,9 @@ class ADSBData:
         registrations = self.get_registrations()
         signal_count = self.get_signal_count()
         return {
-            'live_flight_count': len(live_flights),
-            'flight_count': len(flights['data']),
-            'aircrafttypes_count': len(aircrafttypes['data']),
+            'live_flight_count': len(live_flights['aircraft']),
+            'routes_count': len(flights['data']),
             'registrations_count': len(registrations['data']),
-            'signals_count': signal_count,
         }
 
     def get_live_flights(self) -> dict:
@@ -79,39 +87,53 @@ class ADSBData:
                 ac['icon_category'] = ac_type['category']
                 ac['country'] = ac_type['country']
 
+            images = self.collector.get_aircraft_image_data(ac['hex'])
+            ac['images'] = []
+            icao = ac['hex']
+
+            for i, _ in enumerate(images):
+                ac['images'].append({
+                    'thumbnail_endpoint': f'image?icao={icao}&i={i}&as_thumbnail=true',
+                    'image_endpoint': f'image?icao={icao}&i={i}&as_thumbnail=false',
+                })
+
         return response_json
 
     def get_signal_count(self) -> int:
-        self.cur.execute(f"select count(*) from flightdata")
-        return self.cur.fetchone()['count']
+        cur = self.get_cursor()
+        cur.execute(f"select count(*) from flightdata")
+        return cur.fetchone()['count']
 
     def get_flights(self) -> dict:
+        cur = self.get_cursor()
         columns = [
             'flight',
             'dep_airport',
             'arr_airport'
         ]
 
-        self.cur.execute(f"select distinct {','.join(columns)}, count(*) from flightdata INNER JOIN routesdata ON (flightdata.flight = routesdata.icao) group by {','.join(columns)}")
+        cur.execute(f"select distinct {','.join(columns)}, count(*) from flightdata INNER JOIN routesdata ON (flightdata.flight = routesdata.icao) group by {','.join(columns)}")
         flights = {}
         # for x in self.cur.fetchall():
         #     flights[x[0]] = x[1:]
 
         return {
-            'data': self.cur.fetchall(),
+            'data': cur.fetchall(),
         }
 
     def get_aircrafttypes(self, by_family: bool = False) -> dict:
+        cur = self.get_cursor()
         aircrafttypes = {}
-        if not by_family:
-            self.cur.execute("select distinct aircrafttype, count(*) from flightdata where aircrafttype != '' group by aircrafttype")
 
-            for x in self.cur.fetchall():
+        if not by_family:
+            cur.execute("select distinct aircrafttype, count(*) from flightdata where aircrafttype != '' group by aircrafttype")
+
+            for x in cur.fetchall():
                 aircrafttypes[x['aircrafttype']] = x['count']
         else:
-            self.cur.execute("select aircrafttype, count(*) from flightdata where aircrafttype != '' group by aircrafttype")
+            cur.execute("select aircrafttype, count(*) from flightdata where aircrafttype != '' group by aircrafttype")
 
-            for x in self.cur.fetchall():
+            for x in cur.fetchall():
                 if x['aircrafttype'] in self.ac_families:
                     family_name = self.ac_families[x['aircrafttype']]
                 else:
@@ -127,10 +149,12 @@ class ADSBData:
         }
 
     def get_registrations(self) -> dict:
-        self.cur.execute("select distinct registration, count(*) from flightdata where registration != '' group by registration")
+        cur = self.get_cursor()
+        cur.execute("select distinct registration, count(*) from flightdata where registration != '' group by registration")
+        # cur.execute("select * from aircraftdata where registration != ''")
         registrations = {}
 
-        for x in self.cur.fetchall():
+        for x in cur.fetchall():
             registrations[x['registration']] = x['count']
 
         return {
@@ -142,8 +166,7 @@ class ADSBData:
         if icao in self.cached_routes:
             return self.cached_routes[icao]
 
-        self.cur.execute("select * from routesdata where icao=%(icao)s", {'icao': icao})
-        route = self.cur.fetchone()
+        route = self.collector.check_route(icao)
         self.cached_routes[icao] = route
         return route
 
@@ -152,12 +175,11 @@ class ADSBData:
         if icao in self.cached_aircraft:
             return self.cached_aircraft[icao]
 
-        self.cur.execute("select * from aircraftdata where icao=%(icao)s", {'icao': icao})
-        aircraft = self.cur.fetchone()
+        aircraft = self.collector.check_aircraft(icao)
         self.cached_aircraft[icao] = aircraft
         return aircraft
 
-    def get_ac_icon(self, category: str, adsb_category: str, color: str = None) -> str:
+    def get_ac_icon(self, category: str, adsb_category: str, color: str = None, is_selected: bool = False) -> str:
         if category not in self.ac_icons or category == 'unknown':
             if adsb_category in self.ac_categories['adsb_categories']:
                 category = self.ac_categories['adsb_categories'][adsb_category]
@@ -173,7 +195,7 @@ class ADSBData:
         icon = self.ac_icons[category]['svg']
         icon = icon.replace('aircraft_color_fill', color)
         icon = icon.replace('aircraft_color_stroke', '"#FFFFFF"')
-        icon = icon.replace('add_stroke_selected', '')
+        icon = icon.replace('add_stroke_selected', ' stroke="black" stroke-width="1px"' if is_selected else '')
         return icon
 
     def get_airline_icon(self, iata: str) -> str:
@@ -184,8 +206,12 @@ class ADSBData:
             return None
 
         size = 64
-        cache_path = f'data/logos/{iata}-{size}.png'
+        cache_root = 'data/logos'
+        cache_path = f'{cache_root}/{iata}-{size}.png'
         cache_path_404 = f'{cache_path}.404'
+
+        if not os.path.exists(cache_root):
+            os.mkdir(cache_root)
 
         if os.path.exists(cache_path_404):
             return None
@@ -201,6 +227,53 @@ class ADSBData:
                 print(f'Could not retrieve logo for airline: {iata}')
                 with open(cache_path_404, 'w') as f:
                     f.write(response.content)
+
+        return cache_path
+
+    def get_aircraft_image_cache_path(self, icao: str, i: int, as_thumbnail: bool = False) -> str:
+        cache_root = 'data/images'
+        type = 't' if as_thumbnail else 'i'
+        cache_path = f'{cache_root}/{icao}-{i}-{type}.png'
+        return cache_path
+
+    def get_aircraft_image(self, icao: str, i: int, as_thumbnail: bool = False) -> str:
+        icao = icao.upper()
+
+        if len(icao) != 6:
+            print(f'ICAO Code {icao} is invalid. ICAO codes consist of six hexadecimal characters.')
+            return None
+
+        if i < 0:
+            raise ValueError('Invalid index.')
+
+        cache_root = 'data/images'
+        cache_path = self.get_aircraft_image_cache_path(icao, i, as_thumbnail)
+
+        if not os.path.exists(cache_root):
+            os.mkdir(cache_root)
+
+        if not os.path.exists(cache_path):
+            cur = self.get_cursor()
+            cur.execute("select * from aircraftimages where icao=%(icao)s", {'icao': icao})
+            images = cur.fetchall()
+
+            if len(images) < 1:
+                images = self.collector.get_aircraft_image_data(icao)
+
+            if i >= len(images):
+                raise ValueError(f'Invalid index {i} in range of {len(images)}.')
+
+            print(f'Loading image for {icao}')
+            image = images[i]
+            image_property = 'thumbnail_url' if as_thumbnail else 'image_url'
+            response = requests.get(image[image_property], stream=True)
+
+            if response.ok:
+                with open(cache_path, 'wb') as f:
+                    for chunk in response:
+                        f.write(chunk)
+            else:
+                print(f'Could not retrieve image for aircraft: {icao}')
 
         return cache_path
 
