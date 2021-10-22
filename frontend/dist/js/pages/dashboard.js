@@ -49,6 +49,7 @@ $(function () {
     var markers = {}
     var marker_urls = {}
     var active_icao = null;
+    var flight_data = {};
 
     function UpdateAircraftTypes(aircrafttypes) {
         var colors = [];
@@ -100,6 +101,7 @@ $(function () {
     {
         active_icao = e.sourceTarget.hex;
         UpdateInfo();
+        UpdateLiveFlights();
     }
 
     function UpdateInfo(flight) {
@@ -108,6 +110,7 @@ $(function () {
 
         if (flight.flight_html != null)
             $('#callsign').html(flight.flight_html.replace('24', '64'));
+
         $('#country').text(flight.country);
         $('#registration').text(flight.registration);
         $('#aircrafttype').text(flight.aircrafttype);
@@ -138,16 +141,16 @@ $(function () {
         }
     }
 
-    function UpdateLiveFlights(flights) {
+    function UpdateLiveFlights() {
         flights_table.clear().draw();
 
-        flights.forEach(flight => {
+        flight_data.forEach(flight => {
             flight.visible = flight.flight != null || flight.registration != null || flight.alt_baro != null;
         });
 
         Object.keys(markers).forEach(icao => {
             var remove_marker = true;
-            flights.forEach(flight => {
+            flight_data.forEach(flight => {
                 if (flight.hex == icao && flight.visible)
                     remove_marker = false;
             });
@@ -158,7 +161,7 @@ $(function () {
             }
         });
 
-        flights.forEach(flight => {
+        flight_data.forEach(flight => {
             var undefined = '<i>Unknown</i>'
             var tooltip = ''
             var route_str = undefined
@@ -260,7 +263,7 @@ $(function () {
 
         fetch(api_domain + 'liveflights')
             .then(response => response.json())
-            .then(data => UpdateLiveFlights(data.aircraft));
+            .then(data => {flight_data = data.aircraft; UpdateLiveFlights()});
     }
 
     function RefreshStatistics() {
