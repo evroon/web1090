@@ -124,11 +124,17 @@ $(function () {
         }
 
         for (var i = 0; i < 5; i++) {
+            var thumbnail_src = '';
             var image_src = '';
-            if (flight.images[i] != null)
-                image_src = api_domain + flight.images[i].thumbnail_endpoint;
 
-            $('#image-' + i.toString()).attr("src", image_src);
+            if (flight.images[i] != null) {
+                thumbnail_src = api_domain + flight.images[i].thumbnail_endpoint;
+                image_src = api_domain + flight.images[i].image_endpoint;
+            }
+
+            var element = $('#image-' + i.toString());
+            element.attr("src", thumbnail_src);
+            element.parent().attr("href", image_src);
         }
     }
 
