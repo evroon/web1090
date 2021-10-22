@@ -1,4 +1,5 @@
 **/__pycache__
+.mypy_cache
 
 api/data/logos
 api/data/images
