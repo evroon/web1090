@@ -1,10 +1,14 @@
+from typing import Iterator
+from typing_extensions import final
 import psycopg2
 import psycopg2.extras
 import os
 import requests
 import json
 import pycountry
+import time
 
+from typing import Optional
 from collector import Collector
 
 
@@ -46,6 +50,7 @@ class ADSBData:
             self.ac_countries = json.load(f)
 
         self.country_ids = {}
+        self.streaming_files = {}
 
     def get_cursor(self):
         return self.con.cursor(cursor_factory = psycopg2.extras.RealDictCursor)
@@ -236,7 +241,7 @@ class ADSBData:
         cache_path = f'{cache_root}/{icao}-{i}-{type}.png'
         return cache_path
 
-    def get_aircraft_image(self, icao: str, i: int, as_thumbnail: bool = False) -> str:
+    def get_aircraft_image(self, icao: str, i: int, as_thumbnail: bool = False) -> Optional[str]:
         icao = icao.upper()
 
         if len(icao) != 6:
@@ -252,30 +257,34 @@ class ADSBData:
         if not os.path.exists(cache_root):
             os.mkdir(cache_root)
 
-        if not os.path.exists(cache_path):
-            cur = self.get_cursor()
-            cur.execute("select * from aircraftimages where icao=%(icao)s", {'icao': icao})
-            images = cur.fetchall()
+        if os.path.exists(cache_path) and os.path.getsize(cache_path) > 128:
+            return cache_path
 
-            if len(images) < 1:
-                images = self.collector.get_aircraft_image_data(icao)
+    def stream_aircraft_image(self, icao: str, i: int, as_thumbnail: bool = False) -> Iterator[bytes]:
+        cache_path = self.get_aircraft_image_cache_path(icao, i, as_thumbnail)
 
-            if i >= len(images):
-                raise ValueError(f'Invalid index {i} in range of {len(images)}.')
+        cur = self.get_cursor()
+        cur.execute("select * from aircraftimages where icao=%(icao)s", {'icao': icao})
+        images = cur.fetchall()
 
-            print(f'Loading image for {icao}')
-            image = images[i]
-            image_property = 'thumbnail_url' if as_thumbnail else 'image_url'
-            response = requests.get(image[image_property], stream=True)
+        if len(images) < 1:
+            images = self.collector.get_aircraft_image_data(icao)
 
-            if response.ok:
-                with open(cache_path, 'wb') as f:
-                    for chunk in response:
-                        f.write(chunk)
-            else:
-                print(f'Could not retrieve image for aircraft: {icao}')
+        if i >= len(images):
+            raise ValueError(f'Invalid index {i} in range of {len(images)}.')
 
-        return cache_path
+        image = images[i]
+        image_property = 'thumbnail_url' if as_thumbnail else 'image_url'
+        response = requests.get(image[image_property], stream=True)
+
+        if response.ok:
+            with open(cache_path, 'wb') as f:
+                for chunk in response:
+                    f.write(chunk)
+                    yield chunk
+        else:
+            print(f'Could not retrieve image for aircraft: {icao}')
+
 
     def get_category(self, ac_type_icao: str) -> str:
         if ac_type_icao == '':
@@ -286,7 +295,7 @@ class ADSBData:
 
         return self.ac_categories['ac_types'][ac_type_icao]
 
-    def get_family(self, ac_type_icao: str) -> str:
+    def get_family(self, ac_type_icao: str) -> Optional[str]:
         if ac_type_icao == '':
             return None
 

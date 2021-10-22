@@ -8,7 +8,7 @@ from fastapi_cache import FastAPICache
 from fastapi_cache.decorator import cache
 from fastapi_cache.backends.inmemory import InMemoryBackend
 from starlette.middleware.cors import CORSMiddleware
-from starlette.requests import Request
+from starlette.responses import StreamingResponse
 
 app = FastAPI(
     title="DUMP1090 PSQL API",
@@ -105,7 +105,13 @@ async def image(
     as_thumbnail: bool = Query(False, description='Load as thumbnail or as full image')
 ):
     image_png = data.get_aircraft_image(icao, i, as_thumbnail)
-    return FileResponse(image_png)
+    if image_png is not None:
+        return FileResponse(image_png)
+
+    return StreamingResponse(
+        data.stream_aircraft_image(icao, i, as_thumbnail),
+        media_type="image/png"
+    )
 
 
 @app.on_event("startup")

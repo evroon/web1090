@@ -389,13 +389,10 @@ class Collector:
         response = requests.get(url)
         if not response.ok:
             print(response.content, url)
-            cur = self.get_cursor()
-            cur.execute("update aircraftdata set has_no_images='t' where icao=%(icao)s", {'icao': icao})
             return []
 
         json_response = response.json()
         if 'data' not in json_response:
-            print(response.content, url)
             cur = self.get_cursor()
             cur.execute("update aircraftdata set has_no_images='t' where icao=%(icao)s", {'icao': icao})
             return []
@@ -421,27 +418,8 @@ class Collector:
 
         self.insert_in_table(cur, self.aircraft_image_columns, aggregated_data, AIRCRAFT_IMAGES_DB, 'id')
 
-        if icao not in self.adsbdata.image_requests:
-            print(f'Adding {icao} task')
-            self.adsbdata.image_requests.append(icao)
-            self.adsbdata.background_tasks.add_task(
-                self.get_aircraft_thumbnails,
-                icao,
-                n
-            )
-
         print('Aircraft images are stored.')
         return aggregated_data
-
-    def get_aircraft_thumbnails(self, icao: str, n: int) -> None:
-        for i in range(n):
-            self.adsbdata.get_aircraft_image(icao, i, True)
-
-        for k, hex in enumerate(self.adsbdata.image_requests):
-            if hex == icao:
-                del self.adsbdata.image_requests[k]
-
-        print(f'Finished {icao} task')
 
 
     def get_aircraftdata(self, hexcode: str) -> dict:
