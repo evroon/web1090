@@ -3,12 +3,14 @@ import io
 from starlette.responses import FileResponse
 
 from data import ADSBData
-from fastapi import FastAPI, Response, Query, BackgroundTasks
+from fastapi import FastAPI, Response, Query
 from fastapi_cache import FastAPICache
 from fastapi_cache.decorator import cache
 from fastapi_cache.backends.inmemory import InMemoryBackend
 from starlette.middleware.cors import CORSMiddleware
 from starlette.responses import StreamingResponse
+from typing import Union, Optional
+
 
 app = FastAPI(
     title="DUMP1090 PSQL API",
@@ -29,15 +31,14 @@ data = ADSBData()
 
 
 @cache()
-async def get_cache():
+async def get_cache() -> int:
     return 1
 
 @app.get(
     '/liveflights',
     summary="Get currently detected flights",
 )
-async def flights(background_tasks: BackgroundTasks):
-    data.background_tasks = background_tasks
+async def liveflights() -> dict:
     return data.get_live_flights()
 
 
@@ -46,7 +47,7 @@ async def flights(background_tasks: BackgroundTasks):
     summary="Get flight data",
 )
 @cache(expire=60)
-async def statistics():
+async def statistics() -> dict:
     return data.get_statistics()
 
 
@@ -55,7 +56,7 @@ async def statistics():
     summary="Get flight data",
 )
 @cache(expire=60)
-async def flights():
+async def flights() -> dict:
     return data.get_flights()
 
 
@@ -64,7 +65,7 @@ async def flights():
     summary="Get aircrafttypes",
 )
 @cache(expire=60)
-async def aircrafttypes(by_family: bool = True):
+async def aircrafttypes(by_family: bool = True) -> dict:
     return data.get_aircrafttypes(by_family)
 
 
@@ -73,7 +74,7 @@ async def aircrafttypes(by_family: bool = True):
     summary="Get registrations",
 )
 @cache(expire=60)
-async def registrations():
+async def registrations() -> dict:
     return data.get_registrations()
 
 
@@ -81,7 +82,12 @@ async def registrations():
     '/ac_icon.svg',
     summary="Get icons of an aircraft category",
 )
-async def icons(category: str = None, adsb_category: str = None, color: str = None, is_selected: bool = False):
+async def ac_icon(
+    category: str = None,
+    adsb_category: str = None,
+    color: str = None,
+    is_selected: bool = False
+) -> Response:
     icon_svg = data.get_ac_icon(category, adsb_category, color, is_selected)
     return Response(content=icon_svg, media_type="image/svg+xml")
 
@@ -90,9 +96,12 @@ async def icons(category: str = None, adsb_category: str = None, color: str = No
     '/airline_icon.svg',
     summary="Get icon of an airline",
 )
-async def icons(iata: str = 'KL'):
+async def airline_icon(iata: str = 'KL') -> Optional[FileResponse]:
     icon_png = data.get_airline_icon(iata)
-    return FileResponse(icon_png)
+    if icon_png is not None:
+        return FileResponse(icon_png)
+
+    return None
 
 
 @app.get(
@@ -103,7 +112,7 @@ async def image(
     icao: str = Query(None, title='test', description='ICAO hex code of aircraft'),
     i: int = Query(0, description='index of the image'),
     as_thumbnail: bool = Query(False, description='Load as thumbnail or as full image')
-):
+) -> Union[FileResponse, StreamingResponse]:
     image_png = data.get_aircraft_image(icao, i, as_thumbnail)
     if image_png is not None:
         return FileResponse(image_png)
@@ -115,5 +124,5 @@ async def image(
 
 
 @app.on_event("startup")
-async def startup():
+async def startup() -> None:
     FastAPICache.init(InMemoryBackend(), prefix="fastapi-cache")

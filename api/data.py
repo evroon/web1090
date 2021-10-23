@@ -8,7 +8,7 @@ import json
 import pycountry
 import time
 
-from typing import Optional
+from typing import Optional, Dict, Any
 from collector import Collector
 
 
@@ -29,10 +29,9 @@ class ADSBData:
             port=PSQL_PORT
         )
         self.cur = self.con.cursor(cursor_factory = psycopg2.extras.RealDictCursor)
-        self.cached_routes = {}
-        self.cached_aircraft = {}
-        self.background_tasks = None
-        self.image_requests = []
+        self.cached_routes: Dict[str, Any] = {}
+        self.cached_aircraft: Dict[str, Any] = {}
+        self.country_ids: Dict[str, str] = {}
 
         with open('data/country_aliases.json', 'r') as f:
             self.country_aliases = json.load(f)
@@ -49,10 +48,8 @@ class ADSBData:
         with open('data/ac_countries.json', 'r') as f:
             self.ac_countries = json.load(f)
 
-        self.country_ids = {}
-        self.streaming_files = {}
 
-    def get_cursor(self):
+    def get_cursor(self) -> psycopg2.cursor:
         return self.con.cursor(cursor_factory = psycopg2.extras.RealDictCursor)
 
     def get_statistics(self) -> dict:
@@ -67,12 +64,12 @@ class ADSBData:
             'registrations_count': len(registrations['data']),
         }
 
-    def get_live_flights(self) -> dict:
+    def get_live_flights(self) -> Dict[str, Any]:
         response = requests.get('http://localhost:8080/data/aircraft.json')
         if not response.ok:
             raise ConnectionError('Could not connect to dump1090')
 
-        response_json = response.json()
+        response_json: Dict[str, Any] = response.json()
         for ac in response_json['aircraft']:
             ac['hex'] = ac['hex'].upper().strip()
             if 'flight' in ac:
@@ -107,7 +104,7 @@ class ADSBData:
     def get_signal_count(self) -> int:
         cur = self.get_cursor()
         cur.execute(f"select count(*) from flightdata")
-        return cur.fetchone()['count']
+        return int(cur.fetchone()['count'])
 
     def get_flights(self) -> dict:
         cur = self.get_cursor()
@@ -118,7 +115,7 @@ class ADSBData:
         ]
 
         cur.execute(f"select distinct {','.join(columns)}, count(*) from flightdata INNER JOIN routesdata ON (flightdata.flight = routesdata.icao) group by {','.join(columns)}")
-        flights = {}
+        # flights = {}
         # for x in self.cur.fetchall():
         #     flights[x[0]] = x[1:]
 
@@ -169,7 +166,7 @@ class ADSBData:
     def get_route(self, icao: str) -> dict:
         icao = icao.upper()
         if icao in self.cached_routes:
-            return self.cached_routes[icao]
+            return dict(self.cached_routes[icao])
 
         route = self.collector.check_route(icao)
         self.cached_routes[icao] = route
@@ -178,13 +175,18 @@ class ADSBData:
     def get_aircraft(self, icao: str) -> dict:
         icao = icao.upper()
         if icao in self.cached_aircraft:
-            return self.cached_aircraft[icao]
+            return dict(self.cached_aircraft[icao])
 
         aircraft = self.collector.check_aircraft(icao)
         self.cached_aircraft[icao] = aircraft
         return aircraft
 
-    def get_ac_icon(self, category: str, adsb_category: str, color: str = None, is_selected: bool = False) -> str:
+    def get_ac_icon(self,
+        category: Optional[str],
+        adsb_category: Optional[str],
+        color: Optional[str] = None,
+        is_selected: bool = False
+    ) -> str:
         if category not in self.ac_icons or category == 'unknown':
             if adsb_category in self.ac_categories['adsb_categories']:
                 category = self.ac_categories['adsb_categories'][adsb_category]
@@ -197,13 +199,13 @@ class ADSBData:
             else:
                 color = '#f2ff00'
 
-        icon = self.ac_icons[category]['svg']
+        icon = str(self.ac_icons[category]['svg'])
         icon = icon.replace('aircraft_color_fill', color)
         icon = icon.replace('aircraft_color_stroke', '"#FFFFFF"')
         icon = icon.replace('add_stroke_selected', ' stroke="black" stroke-width="1px"' if is_selected else '')
         return icon
 
-    def get_airline_icon(self, iata: str) -> str:
+    def get_airline_icon(self, iata: str) -> Optional[str]:
         iata = iata.upper()
 
         if len(iata) != 2:
@@ -230,7 +232,7 @@ class ADSBData:
                         f.write(chunk)
             else:
                 print(f'Could not retrieve logo for airline: {iata}')
-                with open(cache_path_404, 'w') as f:
+                with open(cache_path_404, 'wb') as f:
                     f.write(response.content)
 
         return cache_path
@@ -260,6 +262,8 @@ class ADSBData:
         if os.path.exists(cache_path) and os.path.getsize(cache_path) > 128:
             return cache_path
 
+        return None
+
     def stream_aircraft_image(self, icao: str, i: int, as_thumbnail: bool = False) -> Iterator[bytes]:
         cache_path = self.get_aircraft_image_cache_path(icao, i, as_thumbnail)
 
@@ -278,22 +282,25 @@ class ADSBData:
         response = requests.get(image[image_property], stream=True)
 
         if response.ok:
-            with open(cache_path, 'wb') as f:
-                for chunk in response:
-                    f.write(chunk)
-                    yield chunk
+            try:
+                with open(cache_path, 'wb') as f:
+                    for chunk in response:
+                        f.write(chunk)
+                        yield chunk
+            finally:
+                if int(response.headers['Content-Length']) > os.path.getsize(cache_path):
+                    os.remove(cache_path)
         else:
             print(f'Could not retrieve image for aircraft: {icao}')
 
-
-    def get_category(self, ac_type_icao: str) -> str:
+    def get_category(self, ac_type_icao: str) -> Optional[str]:
         if ac_type_icao == '':
             return None
 
         if ac_type_icao not in self.ac_categories['ac_types']:
             return 'unknown'
 
-        return self.ac_categories['ac_types'][ac_type_icao]
+        return str(self.ac_categories['ac_types'][ac_type_icao])
 
     def get_family(self, ac_type_icao: str) -> Optional[str]:
         if ac_type_icao == '':
@@ -302,9 +309,9 @@ class ADSBData:
         if ac_type_icao not in self.ac_families:
             return 'Other'
 
-        return self.ac_families[ac_type_icao]
+        return str(self.ac_families[ac_type_icao])
 
-    def get_country_id(self, name: str) -> str:
+    def get_country_id(self, name: str) -> Optional[str]:
         if name in self.country_aliases.keys():
             name = self.country_aliases[name]
 
@@ -326,10 +333,10 @@ class ADSBData:
             print(f'Error: Could not resolve country "{name}"')
             return None
 
-        self.country_ids[name] = country.alpha_2
-        return country.alpha_2
+        self.country_ids[name] = str(country.alpha_2)
+        return str(country.alpha_2)
 
-    def get_country(self, ac_icao: str) -> str:
+    def get_country(self, ac_icao: str) -> Optional[str]:
         try:
             icao_code_hex = int(ac_icao, 16)
         except ValueError:

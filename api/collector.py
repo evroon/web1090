@@ -1,13 +1,11 @@
 import psycopg2
-import datetime
 import requests
 import json
-import time
 import csv
-import argparse
 import sqlite3
-import pycountry
 import os
+
+from typing import Any, List, Dict, Optional
 
 PSQL_DB=os.getenv('PSQL_DB')
 PSQL_PORT=os.getenv('PSQL_PORT')
@@ -25,7 +23,7 @@ AIRPORTDATA_DB='airportdata'
 
 
 class Collector:
-    def __init__(self, adsbdata) -> None:
+    def __init__(self, adsbdata: Any) -> None:
         self.adsbdata = adsbdata
         self.con = psycopg2.connect(database=PSQL_DB, user=PSQL_USER, password=PSQL_PASSWORD, host="127.0.0.1", port=PSQL_PORT)
         print("Database opened successfully")
@@ -56,10 +54,16 @@ class Collector:
 
         # self.con.close()
 
-    def get_cursor(self):
+    def get_cursor(self) -> psycopg2.cursor:
         return self.con.cursor(cursor_factory = psycopg2.extras.RealDictCursor)
 
-    def insert_in_table(self, cur, columns, aggregated_data, table_name, id=None) -> None:
+    def insert_in_table(
+        self,
+        cur: psycopg2.cursor,
+        columns: Dict[str, Any],
+        aggregated_data: List[Dict[str, Any]],
+        table_name: str,
+        id: Optional[str] = None) -> None:
         if len(aggregated_data) < 1:
             return
 
@@ -294,82 +298,45 @@ class Collector:
 
         print('Aircraft data from aviationstack is stored.')
 
-    def update_route(self, icao: str) -> dict:
+    def update_route(self, icao: str) -> None:
         print('update route...', icao)
         params = {
             'access_key': AVIATIONSTACK_KEY,
             'flight_icao': icao,
         }
-        # api_result = requests.get('http://api.aviationstack.com/v1/flights', params)
-        return {}
-        if not api_result.ok:
-            print(api_result.content)
-            return {}
-
-        response = api_result.json()['data']
-
-        if len(response) < 1:
-            print('no response:', response)
-            return {}
-
-        route = response[0]
-        aggregated_data = [
-            {
-                'icao': route['flight']['icao'],
-                'number': route['flight']['number'],
-
-                'airline_icao': route['airline']['icao'],
-                'airline_iata': route['airline']['iata'],
-                'airline_name': route['airline']['name'],
-
-                'dep_icao': route['departure']['icao'],
-                'dep_iata': route['departure']['iata'],
-                'dep_airport': route['departure']['airport'],
-
-                'arr_icao': route['arrival']['icao'],
-                'arr_iata': route['arrival']['iata'],
-                'arr_airport': route['arrival']['airport'],
-            }
-        ]
-        cur = self.get_cursor()
-        self.insert_in_table(cur, self.routesdata_columns, aggregated_data, ROUTESDATA_DB, 'icao')
-
-        cur.execute("select * from routesdata where icao=%(icao)s", {'icao': icao})
-        route = cur.fetchone()
-        print(route)
-        return route
+        pass
 
     def update_aircraft(self, icao: str) -> dict:
         pass
 
-    def check_aircraft(self, icao: str) -> dict:
+    def check_aircraft(self, icao: str) -> Dict[str, Any]:
         cur = self.get_cursor()
         cur.execute("select * from aircraftdata where icao=%(icao)s", {'icao': icao})
-        aircraft = cur.fetchone()
+        aircraft: Dict[str, Any] = cur.fetchone()
 
-        # if aircraft is None:
-        #     return self.update_aircraft(icao)
+        if aircraft is None:
+            return self.update_aircraft(icao)
 
         return aircraft
 
     def check_route(self, icao: str) -> dict:
         cur = self.get_cursor()
         cur.execute("select * from routesdata where icao=%(icao)s", {'icao': icao})
-        route = cur.fetchone()
+        route = dict(cur.fetchone())
 
         if route is None:
             self.update_route(icao)
 
         return route
 
-    def get_image_id(icao: str, i: int) -> str:
+    def get_image_id(self, icao: str, i: int) -> int:
         return int(icao, 16) * 100 + i
 
-    def get_aircraft_image_data(self, icao: str) -> dict:
+    def get_aircraft_image_data(self, icao: str) -> List[Dict[str, Any]]:
         icao = icao.upper()
         cur = self.get_cursor()
         cur.execute("select * from aircraftimages where icao=%(icao)s", {'icao': icao})
-        images = cur.fetchall()
+        images: List[Dict[str, Any]] = cur.fetchall()
 
         cur = self.get_cursor()
         cur.execute("select has_no_images from aircraftdata where icao=%(icao)s", {'icao': icao})
@@ -377,6 +344,7 @@ class Collector:
 
         if aircraft is None:
             return []
+
         has_no_images = aircraft['has_no_images']
 
         if len(images) > 0 or has_no_images:
@@ -439,7 +407,7 @@ class Collector:
     def table_exists(self, table_name: str) -> bool:
         cur = self.con.cursor()
         cur.execute("select * from information_schema.tables where table_name=%s", (table_name,))
-        return cur.rowcount > 0
+        return bool(cur.rowcount > 0)
 
 
     def create_table(self, table_name: str, columns: dict) -> None:
