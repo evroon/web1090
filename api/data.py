@@ -3,6 +3,8 @@ import requests
 import pycountry
 
 from typing import Optional, Dict, Any, Iterator
+
+from sqlalchemy.orm.session import Session
 from collector import Collector
 from config import Config
 import crud
@@ -19,7 +21,7 @@ class ADSBData:
         self.config = config
         self.collector = Collector(self)
 
-    def get_db(self):
+    def get_db(self) -> Session:
         return self.db
 
     def get_statistics(self) -> dict:

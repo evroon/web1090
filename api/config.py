@@ -24,5 +24,5 @@ class Config:
             self.ac_countries = json.load(f)
 
     def set_airport_data_window(self, unix_time: int) -> None:
-        self.airport_data_window = datetime.fromtimestamp(int)
+        self.airport_data_window = datetime.utcfromtimestamp(float(unix_time))
         print(self.airport_data_window)

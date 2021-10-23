@@ -1,61 +1,84 @@
 from sqlalchemy.orm import Session
-from typing import Optional
+from typing import Optional, List, cast
 
-import models, schemas
+import schemas
+from models import Aircraft, Route, AircraftImage
 
 # Aircraft
-def get_aircraft(db: Session, icao: str) -> Optional[models.Aircraft]:
-    return db.query(models.Aircraft).filter(models.Aircraft.icao == icao).first()
+def get_aircraft(db: Session, icao: str) -> Optional[Aircraft]:
+    return cast(
+        Optional[Aircraft],
+        db.query(Aircraft).filter(Aircraft.icao == icao).first()
+    )
 
 
-def get_aircraft_paginated(db: Session, skip: int = 0, limit: int = 100):
-    return db.query(models.Aircraft).offset(skip).limit(limit).all()
+def get_aircraft_paginated(db: Session, skip: int = 0, limit: int = 100) -> List[Aircraft]:
+    return cast(
+        List[Aircraft],
+        db.query(Aircraft).offset(skip).limit(limit).all()
+    )
 
 
-def create_aircraft(db: Session, aircraft: schemas.AircraftCreate):
-    db_aircraft = models.Aircraft(**aircraft.dict())
+def create_aircraft(db: Session, aircraft: schemas.AircraftCreate) -> Aircraft:
+    db_aircraft = Aircraft(**aircraft.dict())
     db.add(db_aircraft)
     db.commit()
     db.refresh(db_aircraft)
-    return db_aircraft
+    return cast(Aircraft, db_aircraft)
 
 
 # AircraftImage
-def get_aircraft_image(db: Session, icao: str, number: int):
-    return db.query(models.AircraftImage) \
-        .filter(models.AircraftImage.icao == icao) \
-        .filter(models.AircraftImage.number == number) \
-        .first()
+def get_aircraft_image(db: Session, icao: str, number: int) -> Optional[AircraftImage]:
+    return cast(
+        Optional[AircraftImage],
+        db.query(AircraftImage) \
+            .filter(AircraftImage.icao == icao) \
+            .filter(AircraftImage.number == number) \
+            .first()
+    )
 
 
-def get_images(db: Session, icao: str, skip: int = 0, limit: int = 100):
-    return db.query(models.AircraftImage) \
-        .filter(models.AircraftImage.icao == icao) \
-        .offset(skip) \
-        .limit(limit) \
-        .all()
+def get_images(db: Session, icao: str, skip: int = 0, limit: int = 100) -> List[AircraftImage]:
+    return cast(
+        List[AircraftImage],
+        db.query(AircraftImage) \
+            .filter(AircraftImage.icao == icao) \
+            .offset(skip) \
+            .limit(limit) \
+            .all()
+    )
 
 
-def create_aircraft_image(db: Session, db_image: models.AircraftImage):
+def create_aircraft_image(db: Session, db_image: AircraftImage) -> AircraftImage:
     db.add(db_image)
     db.commit()
     db.refresh(db_image)
-    return db_image
+    return cast(AircraftImage, db_image)
 
 
-def set_aircraft_has_no_images(db: Session, aircraft: models.Aircraft):
+def set_aircraft_has_no_images(db: Session, aircraft: Aircraft) -> None:
     aircraft.has_no_images = True
     db.commit()
 
 
 # Route
-def get_route(db: Session, icao: str):
-    return db.query(models.Route).filter(models.Route.icao == icao).first()
+def get_route(db: Session, icao: str) -> Optional[Route]:
+    return cast(
+        Optional[Route],
+        db.query(Route).filter(Route.icao == icao).first()
+    )
+
+
+def get_routes_paginated(db: Session, skip: int = 0, limit: int = 100) -> List[Route]:
+    return cast(
+        List[Route],
+        db.query(Route).offset(skip).limit(limit).all()
+    )
 
 
 def get_route_count(db: Session) -> int:
-    return db.query(models.Route).count()
+    return int(db.query(Route).count())
 
 
 def get_registrations_count(db: Session) -> int:
-    return db.query(models.Aircraft).count()
+    return int(db.query(Aircraft).count())

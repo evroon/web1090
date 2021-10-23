@@ -2,6 +2,9 @@ import requests
 import csv
 import sqlite3
 import os
+
+from sqlalchemy.orm.session import Session
+from api.schemas import AircraftImage
 import crud
 import models
 
@@ -27,7 +30,7 @@ class Collector:
         self.adsbdata = adsbdata
 
 
-    def get_db(self):
+    def get_db(self) -> Session:
         return self.adsbdata.db
 
 
@@ -35,7 +38,6 @@ class Collector:
         print('Storing routes...')
         conn = sqlite3.connect(VIRTUALRADAR_SQLITE_DB_PATH)
         cur_in = conn.execute('select * from RouteView')
-        cur = self.con.cursor()
         aggregated_route_data = []
         routes = cur_in.fetchall()
         batch_size = 10000
@@ -71,9 +73,6 @@ class Collector:
                 'arr_country': route[26],
                 'arr_country_id': self.adsbdata.get_country_id(route[26]),
             })
-
-        for i in range(0, len(aggregated_route_data), batch_size):
-            self.insert_in_table(cur, self.routesdata_columns, aggregated_route_data[i:i+batch_size], ROUTESDATA_DB, 'icao')
 
         print('Finished loading routes.')
         conn.close()
@@ -127,7 +126,6 @@ class Collector:
 
     def store_aircraftdata_flightaware(self) -> None:
         print('Storing aircraft data in postgres...')
-        cur = self.con.cursor()
         batch_size = 10000
 
         with open('data/flightaware.csv', 'r') as f:
@@ -170,9 +168,6 @@ class Collector:
                     'active': None,
                 })
 
-            for i in range(0, len(aggregated_data), batch_size):
-                self.insert_in_table(cur, self.aircraftdata_columns, aggregated_data[i:i+batch_size], AIRCRAFTDATA_DB, 'icao')
-
             print('Aircraft data is stored.')
 
 
@@ -180,7 +175,6 @@ class Collector:
         print('Storing aircraft from aviationstack...')
         total = 1e8
         pagination = 100
-        cur = self.get_cursor()
         i = 0
 
         while i < total:
@@ -237,35 +231,14 @@ class Collector:
                     'needs_update': False,
                 })
 
-            self.insert_in_table(cur, self.aircraftdata_columns, aggregated_data, AIRCRAFTDATA_DB, 'icao')
-
             i += pagination
 
         print('Aircraft data from aviationstack is stored.')
 
-    def update_route(self, icao: str) -> None:
-        print('update route...', icao)
-        params = {
-            'access_key': AVIATIONSTACK_KEY,
-            'flight_icao': icao,
-        }
-        pass
-
-    def update_aircraft(self, icao: str) -> dict:
-        pass
-
-    def check_route(self, icao: str) -> dict:
-        route = crud.get_route(self.get_db(), icao)
-
-        if route is None:
-            self.update_route(icao)
-
-        return route
-
     def get_image_id(self, icao: str, i: int) -> int:
         return int(icao, 16) * 100 + i
 
-    def get_aircraft_image_data(self, aircraft: models.Aircraft, icao: str) -> List[Dict[str, Any]]:
+    def get_aircraft_image_data(self, aircraft: models.Aircraft, icao: str) -> List[models.AircraftImage]:
         icao = icao.upper()
 
         db = self.get_db()
@@ -296,14 +269,14 @@ class Collector:
             crud.set_aircraft_has_no_images(db, aircraft)
             return []
 
-        aggregated_data = []
+        result: List[AircraftImage] = []
 
         for i, aircraft in enumerate(json_response['data']):
             thumbnail = aircraft['image']
             image = thumbnail.replace('/thumbnails', '')
             photographer = aircraft['photographer']
 
-            crud.create_aircraft_image(self.get_db(), models.AircraftImage(
+            image = crud.create_aircraft_image(self.get_db(), models.AircraftImage(
                 id=int(icao, 16) * 100 + i,
                 number=i,
                 icao=icao,
@@ -311,20 +284,7 @@ class Collector:
                 thumbnail_url=thumbnail,
                 photographer=photographer
             ))
+            result.append(image)
 
         print('Aircraft images are stored.')
-        return aggregated_data
-
-    def store_data(self, aggregated_data: list) -> None:
-        print(f'Writing {len(aggregated_data)} entries to database.')
-        columns_without_id = self.flightdata_columns
-        if 'id' in columns_without_id:
-            del columns_without_id['id']
-
-        cur = self.con.cursor()
-        data_values = ','.join([f'%({x})s' for x in columns_without_id.keys()])
-        columns_keys = ','.join(columns_without_id.keys())
-        args_str = ','.join(['(' + cur.mogrify(data_values, x).decode("utf-8") + ')' for x in aggregated_data])
-
-        cur.execute(f"INSERT INTO {FLIGHTDATA_DB} ({columns_keys}) VALUES {args_str}")
-        self.con.commit()
+        return result

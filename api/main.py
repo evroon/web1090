@@ -34,7 +34,7 @@ app.add_middleware(
 )
 
 # Dependency
-def get_db():
+def get_db() -> Session:
     db = SessionLocal()
     try:
         yield db
@@ -69,13 +69,16 @@ async def statistics(db: Session = Depends(get_db)) -> dict:
 
 
 @app.get(
-    '/flights',
-    summary="Get flight data",
+    '/routes',
+    summary="Get route data",
 )
 @cache(expire=60)
-async def flights(db: Session = Depends(get_db)) -> dict:
-    data = ADSBData(db, config)
-    return data.get_flights()
+async def routes(
+    skip: int = 0,
+    limit: int = 100,
+    db: Session = Depends(get_db)
+) -> List[models.Route]:
+    return crud.get_routes_paginated(db, skip, limit)
 
 
 @app.get(
@@ -84,11 +87,11 @@ async def flights(db: Session = Depends(get_db)) -> dict:
     response_model=List[schemas.Aircraft],
 )
 @cache(expire=60)
-async def registrations(
+async def aircraft(
     skip: int = 0,
     limit: int = 100,
     db: Session = Depends(get_db)
-) -> dict:
+) -> List[models.Aircraft]:
     return crud.get_aircraft_paginated(db, skip, limit)
 
 
