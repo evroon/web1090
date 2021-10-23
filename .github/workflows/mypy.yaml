@@ -1,0 +1,19 @@
+name: mypy
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-20.04
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Install Python modules
+        run: pip3 install -r requirements.txt
+
+      - name: Run mypy
+        run: mypy

@@ -3,3 +3,4 @@ uvicorn
 starlette
 pycountry
 fastapi-cache2
+types-requests
