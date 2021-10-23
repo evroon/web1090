@@ -104,40 +104,71 @@ $(function () {
         UpdateLiveFlights();
     }
 
-    function UpdateInfo(flight) {
-        if (flight == null)
-            return;
+    function setValue(element, flight, field, value)
+    {
+        if (field == 'dep_airport')
+            element.text(value + ` (${flight.route.dep_icao})`);
+        else if (field == 'arr_airport')
+            element.text(value + ` (${flight.route.arr_icao})`);
+        else
+            element.text(value);
+    }
 
-        if (flight.flight_html != null)
+    function updateField(flight, field)
+    {
+        var element = $('#' + field);
+        var route_elements = ['airline_name', 'dep_airport', 'arr_airport'];
+        var value = null;
+        if (flight != null && (!route_elements.includes(field) || flight.route != null))
+            value = route_elements.includes(field) ? flight.route[field] : flight[field];
+
+        if (flight == null || value == null) {
+            element.html('<i>Unknown</i>');
+        } else {
+            setValue(element, flight, field, value);
+        }
+    }
+
+    function UpdateInfo(flight) {
+        if (flight != null && flight.flight_html != null)
             $('#callsign').html(flight.flight_html.replace('24', '64'));
 
-        $('#country').text(flight.country);
-        $('#registration').text(flight.registration);
-        $('#aircrafttype').text(flight.aircrafttype);
+        var fields = [
+            'country',
+            'registration',
+            'aircrafttype',
+            'alt_baro',
+            'gs',
+            'ias',
+            'squawk',
+            'airline_name',
+            'dep_airport',
+            'arr_airport'
+        ];
 
-        $('#alt_baro').text(flight.alt_baro);
-        $('#gs').text(flight.gs);
-        $('#ias').text(flight.ias);
-        $('#squawk').text(flight.squawk);
+        fields.forEach(field => {
+            updateField(flight, field);
+        })
 
-        if (flight.route != null) {
-            $('#airline_name').text(flight.route.airline_name);
-            $('#dep_icao').text(flight.route.dep_icao);
-            $('#arr_icao').text(flight.route.arr_icao);
-        }
+        if (flight != null) {
+            if (flight.images.length == 0)
+                $('#img-container').hide();
+            else
+                $('#img-container').show();
 
-        for (var i = 0; i < 5; i++) {
-            var thumbnail_src = '';
-            var image_src = '';
+            for (var i = 0; i < 5; i++) {
+                var thumbnail_src = '';
+                var image_src = '';
 
-            if (flight.images[i] != null) {
-                thumbnail_src = api_domain + flight.images[i].thumbnail_endpoint;
-                image_src = api_domain + flight.images[i].image_endpoint;
+                if (flight.images[i] != null) {
+                    thumbnail_src = api_domain + flight.images[i].thumbnail_endpoint;
+                    image_src = api_domain + flight.images[i].image_endpoint;
+                }
+
+                var element = $('#image-' + i.toString());
+                element.attr("src", thumbnail_src);
+                element.parent().attr("href", image_src);
             }
-
-            var element = $('#image-' + i.toString());
-            element.attr("src", thumbnail_src);
-            element.parent().attr("href", image_src);
         }
     }
 
