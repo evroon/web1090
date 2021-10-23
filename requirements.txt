@@ -5,3 +5,5 @@ pycountry
 fastapi-cache2
 types-requests
 mypy
+sqlalchemy
+pydantic

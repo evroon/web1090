@@ -1,11 +1,11 @@
-import psycopg2
 import requests
-import json
 import csv
 import sqlite3
 import os
+import crud
+import models
 
-from typing import Any, List, Dict, Optional
+from typing import Any, List, Dict
 
 PSQL_DB=os.getenv('PSQL_DB')
 PSQL_PORT=os.getenv('PSQL_PORT')
@@ -25,65 +25,10 @@ AIRPORTDATA_DB='airportdata'
 class Collector:
     def __init__(self, adsbdata: Any) -> None:
         self.adsbdata = adsbdata
-        self.con = psycopg2.connect(database=PSQL_DB, user=PSQL_USER, password=PSQL_PASSWORD, host="127.0.0.1", port=PSQL_PORT)
-        print("Database opened successfully")
 
-        with open('data/db.json', 'r') as f:
-            db = json.load(f)
 
-        self.flightdata_columns = db['flightdata_columns']
-        self.aircraft_image_columns = db['aircraft_image_columns']
-        self.aircraftdata_columns = db['aircraftdata_columns']
-        self.airportdata_columns = db['airportdata_columns']
-        self.routesdata_columns = db['routesdata_columns']
-
-        if not self.table_exists(AIRCRAFTDATA_DB):
-            self.create_table(AIRCRAFTDATA_DB, self.aircraftdata_columns)
-            self.store_aircraftdata_flightaware()
-            self.store_aircraftdata_aviationstack()
-
-        if not self.table_exists(ROUTESDATA_DB):
-            self.create_table(ROUTESDATA_DB, self.routesdata_columns)
-            self.store_routedata_virtualradar()
-
-        if not self.table_exists(AIRCRAFT_IMAGES_DB):
-            self.create_table(AIRCRAFT_IMAGES_DB, self.aircraft_image_columns)
-
-        if not self.table_exists(FLIGHTDATA_DB):
-            self.create_table(FLIGHTDATA_DB, self.flightdata_columns)
-
-        # self.con.close()
-
-    def get_cursor(self) -> psycopg2.cursor:
-        return self.con.cursor(cursor_factory = psycopg2.extras.RealDictCursor)
-
-    def insert_in_table(
-        self,
-        cur: psycopg2.cursor,
-        columns: Dict[str, Any],
-        aggregated_data: List[Dict[str, Any]],
-        table_name: str,
-        id: Optional[str] = None) -> None:
-        if len(aggregated_data) < 1:
-            return
-
-        data_values = ','.join([f'%({x})s' for x in columns.keys()])
-        columns_keys = ','.join(columns.keys())
-        args_str = ','.join(['(' + cur.mogrify(data_values, x).decode("utf-8") + ')' for x in aggregated_data])
-        on_conflict = ''
-
-        # Overwrite columns if key already exists in table.
-        if id is not None:
-            args = []
-            for col in columns:
-                if col != 'id':
-                    args.append(f'{col} = excluded.{col}')
-
-            on_conflict = f"ON CONFLICT ({id}) DO UPDATE SET {', '.join(args)}"
-
-        print(f'Adding {len(aggregated_data)} entries in {table_name}.')
-        cur.execute(f"INSERT INTO {table_name} ({columns_keys}) VALUES {args_str} {on_conflict}")
-        self.con.commit()
+    def get_db(self):
+        return self.adsbdata.db
 
 
     def store_routedata_virtualradar(self) -> None:
@@ -134,50 +79,50 @@ class Collector:
         conn.close()
 
 
-    def store_airportdata(self) -> None:
-        print('Storing airports...')
-        total = 1e8
-        pagination = 100
-        cur = self.con.cursor()
-        i = 0
+    # def store_airportdata(self) -> None:
+    #     print('Storing airports...')
+    #     total = 1e8
+    #     pagination = 100
+    #     cur = self.con.cursor()
+    #     i = 0
 
-        while i < total:
-            params = {
-                'access_key': AVIATIONSTACK_KEY,
-                'offset': i,
-            }
-            api_result = requests.get('http://api.aviationstack.com/v1/airports', params)
+    #     while i < total:
+    #         params = {
+    #             'access_key': AVIATIONSTACK_KEY,
+    #             'offset': i,
+    #         }
+    #         api_result = requests.get('http://api.aviationstack.com/v1/airports', params)
 
-            if not api_result.ok:
-                print(api_result.content)
-                return
+    #         if not api_result.ok:
+    #             print(api_result.content)
+    #             return
 
-            api_response = api_result.json()
-            total = api_response['pagination']['total']
+    #         api_response = api_result.json()
+    #         total = api_response['pagination']['total']
 
-            aggregated_data = []
+    #         aggregated_data = []
 
-            for airport in api_response['data']:
-                aggregated_data.append({
-                    'name': airport['airport_name'],
-                    'iata': airport['iata_code'],
-                    'icao': airport['icao_code'],
-                    'lat': airport['latitude'],
-                    'lon': airport['longitude'],
-                    'geoname_id': airport['geoname_id'],
-                    'timezone': airport['timezone'],
-                    'gmt': airport['gmt'],
-                    'country_name': airport['country_name'],
-                    'country_iso2': airport['country_iso2'],
-                    'city_iata_code': airport['city_iata_code'],
-                })
+    #         for airport in api_response['data']:
+    #             aggregated_data.append({
+    #                 'name': airport['airport_name'],
+    #                 'iata': airport['iata_code'],
+    #                 'icao': airport['icao_code'],
+    #                 'lat': airport['latitude'],
+    #                 'lon': airport['longitude'],
+    #                 'geoname_id': airport['geoname_id'],
+    #                 'timezone': airport['timezone'],
+    #                 'gmt': airport['gmt'],
+    #                 'country_name': airport['country_name'],
+    #                 'country_iso2': airport['country_iso2'],
+    #                 'city_iata_code': airport['city_iata_code'],
+    #             })
 
-            self.insert_in_table(cur, self.airportdata_columns, aggregated_data, AIRPORTDATA_DB, 'icao')
+    #         self.insert_in_table(cur, self.airportdata_columns, aggregated_data, AIRPORTDATA_DB, 'icao')
 
-            i += pagination
-            break
+    #         i += pagination
+    #         break
 
-        print('Airport data is stored.')
+    #     print('Airport data is stored.')
 
 
     def store_aircraftdata_flightaware(self) -> None:
@@ -309,20 +254,8 @@ class Collector:
     def update_aircraft(self, icao: str) -> dict:
         pass
 
-    def check_aircraft(self, icao: str) -> Dict[str, Any]:
-        cur = self.get_cursor()
-        cur.execute("select * from aircraftdata where icao=%(icao)s", {'icao': icao})
-        aircraft: Dict[str, Any] = cur.fetchone()
-
-        if aircraft is None:
-            return self.update_aircraft(icao)
-
-        return aircraft
-
     def check_route(self, icao: str) -> dict:
-        cur = self.get_cursor()
-        cur.execute("select * from routesdata where icao=%(icao)s", {'icao': icao})
-        route = dict(cur.fetchone())
+        route = crud.get_route(self.get_db(), icao)
 
         if route is None:
             self.update_route(icao)
@@ -332,98 +265,55 @@ class Collector:
     def get_image_id(self, icao: str, i: int) -> int:
         return int(icao, 16) * 100 + i
 
-    def get_aircraft_image_data(self, icao: str) -> List[Dict[str, Any]]:
+    def get_aircraft_image_data(self, aircraft: models.Aircraft, icao: str) -> List[Dict[str, Any]]:
         icao = icao.upper()
-        cur = self.get_cursor()
-        cur.execute("select * from aircraftimages where icao=%(icao)s", {'icao': icao})
-        images: List[Dict[str, Any]] = cur.fetchall()
 
-        cur = self.get_cursor()
-        cur.execute("select has_no_images from aircraftdata where icao=%(icao)s", {'icao': icao})
-        aircraft = cur.fetchone()
+        db = self.get_db()
+        images = crud.get_images(db, icao)
 
         if aircraft is None:
+            print(f'get_aircraft_image_data: {icao}')
             return []
 
-        has_no_images = aircraft['has_no_images']
-
-        if len(images) > 0 or has_no_images:
+        if len(images) > 0 or aircraft.has_no_images:
             return images
 
-        cur = self.con.cursor()
         count = 50
 
         url = f'https://www.airport-data.com/api/ac_thumb.json?m={icao}&n={count}'
+        print('sending api request')
         response = requests.get(url)
+
         if not response.ok:
+            crud.set_aircraft_has_no_images(db, aircraft)
             print(response.content, url)
             return []
 
         json_response = response.json()
         if 'data' not in json_response:
-            cur = self.get_cursor()
-            cur.execute("update aircraftdata set has_no_images='t' where icao=%(icao)s", {'icao': icao})
+            self.adsbdata.config.set_airport_data_window(int(response.headers['X-RateLimit-Reset']))
+            print(response.content, url, response.headers['X-RateLimit-Remaining'], response.headers['X-RateLimit-Reset'])
+            crud.set_aircraft_has_no_images(db, aircraft)
             return []
 
         aggregated_data = []
-        n = len(json_response['data'])
 
         for i, aircraft in enumerate(json_response['data']):
             thumbnail = aircraft['image']
             image = thumbnail.replace('/thumbnails', '')
-            link = aircraft['link']
             photographer = aircraft['photographer']
 
-            aggregated_data.append({
-                'id': int(icao, 16) * 100 + i,
-                'number': i,
-                'icao': icao,
-                'image_url': image,
-                'thumbnail_url': thumbnail,
-                'link': link,
-                'photographer': photographer,
-            })
-
-        self.insert_in_table(cur, self.aircraft_image_columns, aggregated_data, AIRCRAFT_IMAGES_DB, 'id')
+            crud.create_aircraft_image(self.get_db(), models.AircraftImage(
+                id=int(icao, 16) * 100 + i,
+                number=i,
+                icao=icao,
+                image_url=image,
+                thumbnail_url=thumbnail,
+                photographer=photographer
+            ))
 
         print('Aircraft images are stored.')
         return aggregated_data
-
-
-    def get_aircraftdata(self, hexcode: str) -> dict:
-        cur = self.con.cursor()
-        cur.execute(f"SELECT * FROM {AIRCRAFTDATA_DB} WHERE icao=%(hex)s", {'hex': hexcode})
-        rows = cur.fetchone()
-
-        if rows is None:
-            return {}
-
-        return {
-            'registration': rows[1],
-            'aircrafttype': rows[2],
-        }
-
-
-    def table_exists(self, table_name: str) -> bool:
-        cur = self.con.cursor()
-        cur.execute("select * from information_schema.tables where table_name=%s", (table_name,))
-        return bool(cur.rowcount > 0)
-
-
-    def create_table(self, table_name: str, columns: dict) -> None:
-        print(f'Creating table {table_name}')
-        columns_query = ', '.join([f'{k} {v}' for k, v in columns.items()])
-
-        cur = self.con.cursor()
-        cur.execute(f'CREATE TABLE {table_name}({columns_query});')
-        self.con.commit()
-
-        if (table_name == 'flightdata'):
-            cur.execute(f'CREATE INDEX flight_idx ON flightdata USING btree (flight);')
-            cur.execute(f'CREATE INDEX aircrafttype_idx ON flightdata USING btree (aircrafttype);')
-            cur.execute(f'CREATE INDEX registration_idx ON flightdata USING btree (registration);')
-            self.con.commit()
-
 
     def store_data(self, aggregated_data: list) -> None:
         print(f'Writing {len(aggregated_data)} entries to database.')

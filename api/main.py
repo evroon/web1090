@@ -1,15 +1,21 @@
-import io
-
-from starlette.responses import FileResponse
+from config import Config
+from database import SessionLocal, engine
+import models, crud, schemas
 
 from data import ADSBData
 from fastapi import FastAPI, Response, Query
+from fastapi.params import Depends
 from fastapi_cache import FastAPICache
 from fastapi_cache.decorator import cache
 from fastapi_cache.backends.inmemory import InMemoryBackend
 from starlette.middleware.cors import CORSMiddleware
-from starlette.responses import StreamingResponse
-from typing import Union, Optional
+from starlette.responses import StreamingResponse, FileResponse
+from sqlalchemy.orm import Session
+
+from typing import Union, Optional, List
+
+
+models.Base.metadata.create_all(bind=engine)
 
 
 app = FastAPI(
@@ -27,18 +33,28 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-data = ADSBData()
+# Dependency
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
 
 
 @cache()
 async def get_cache() -> int:
     return 1
 
+config = Config()
+
+
 @app.get(
     '/liveflights',
     summary="Get currently detected flights",
 )
-async def liveflights() -> dict:
+async def liveflights(db: Session = Depends(get_db)) -> dict:
+    data = ADSBData(db, config)
     return data.get_live_flights()
 
 
@@ -47,7 +63,8 @@ async def liveflights() -> dict:
     summary="Get flight data",
 )
 @cache(expire=60)
-async def statistics() -> dict:
+async def statistics(db: Session = Depends(get_db)) -> dict:
+    data = ADSBData(db, config)
     return data.get_statistics()
 
 
@@ -56,26 +73,23 @@ async def statistics() -> dict:
     summary="Get flight data",
 )
 @cache(expire=60)
-async def flights() -> dict:
+async def flights(db: Session = Depends(get_db)) -> dict:
+    data = ADSBData(db, config)
     return data.get_flights()
 
 
 @app.get(
-    '/aircrafttypes',
-    summary="Get aircrafttypes",
+    '/aircraft',
+    summary="Get aircraft",
+    response_model=List[schemas.Aircraft],
 )
 @cache(expire=60)
-async def aircrafttypes(by_family: bool = True) -> dict:
-    return data.get_aircrafttypes(by_family)
-
-
-@app.get(
-    '/registrations',
-    summary="Get registrations",
-)
-@cache(expire=60)
-async def registrations() -> dict:
-    return data.get_registrations()
+async def registrations(
+    skip: int = 0,
+    limit: int = 100,
+    db: Session = Depends(get_db)
+) -> dict:
+    return crud.get_aircraft_paginated(db, skip, limit)
 
 
 @app.get(
@@ -86,8 +100,10 @@ async def ac_icon(
     category: str = None,
     adsb_category: str = None,
     color: str = None,
-    is_selected: bool = False
+    is_selected: bool = False,
+    db: Session = Depends(get_db)
 ) -> Response:
+    data = ADSBData(db, config)
     icon_svg = data.get_ac_icon(category, adsb_category, color, is_selected)
     return Response(content=icon_svg, media_type="image/svg+xml")
 
@@ -96,7 +112,11 @@ async def ac_icon(
     '/airline_icon.svg',
     summary="Get icon of an airline",
 )
-async def airline_icon(iata: str = 'KL') -> Optional[FileResponse]:
+async def airline_icon(
+    iata: str = 'KL',
+    db: Session = Depends(get_db)
+) -> Optional[FileResponse]:
+    data = ADSBData(db, config)
     icon_png = data.get_airline_icon(iata)
     if icon_png is not None:
         return FileResponse(icon_png)
@@ -111,9 +131,12 @@ async def airline_icon(iata: str = 'KL') -> Optional[FileResponse]:
 async def image(
     icao: str = Query(None, title='test', description='ICAO hex code of aircraft'),
     i: int = Query(0, description='index of the image'),
-    as_thumbnail: bool = Query(False, description='Load as thumbnail or as full image')
+    as_thumbnail: bool = Query(False, description='Load as thumbnail or as full image'),
+    db: Session = Depends(get_db)
 ) -> Union[FileResponse, StreamingResponse]:
+    data = ADSBData(db, config)
     image_png = data.get_aircraft_image(icao, i, as_thumbnail)
+
     if image_png is not None:
         return FileResponse(image_png)
 
