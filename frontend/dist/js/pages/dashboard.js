@@ -1,7 +1,7 @@
 function UpdateStatistics(data) {
     $('#flight-count').text(`${data.live_flight_count}`);
-    $('#registrations-count').text(`${data.registrations_count}`);
-    $('#aircrafttypes-count').text(`${data.aircrafttypes_count}`);
+    $('#aircraft-count').text(`${data.registrations_count}`);
+    $('#routes-count').text(`${data.routes_count}`);
     $('#adsb-signals-count').text(`${data.signals_count}`);
 }
 
