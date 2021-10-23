@@ -4,7 +4,7 @@ import sqlite3
 import os
 
 from sqlalchemy.orm.session import Session
-from api.schemas import AircraftImage
+from schemas import AircraftImage
 import crud
 import models
 
