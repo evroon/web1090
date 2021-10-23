@@ -4,7 +4,6 @@ import sqlite3
 import os
 
 from sqlalchemy.orm.session import Session
-from schemas import AircraftImage
 import crud
 import models
 
@@ -269,7 +268,7 @@ class Collector:
             crud.set_aircraft_has_no_images(db, aircraft)
             return []
 
-        result: List[AircraftImage] = []
+        result: List[models.AircraftImage] = []
 
         for i, aircraft in enumerate(json_response['data']):
             thumbnail = aircraft['image']
