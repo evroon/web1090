@@ -19,12 +19,19 @@ def get_aircraft_paginated(db: Session, skip: int = 0, limit: int = 100) -> List
     )
 
 
-def create_aircraft(db: Session, aircraft: schemas.AircraftCreate) -> Aircraft:
-    db_aircraft = Aircraft(**aircraft.dict())
+def create_aircraft(db: Session, db_aircraft: Aircraft) -> Aircraft:
     db.add(db_aircraft)
     db.commit()
     db.refresh(db_aircraft)
     return cast(Aircraft, db_aircraft)
+
+
+def update_aircraft(db: Session, db_aircraft: Aircraft) -> None:
+    if get_aircraft(db, db_aircraft.icao) is None:
+        create_aircraft(db, db_aircraft)
+
+    db.merge(db_aircraft)
+    db.commit()
 
 
 # AircraftImage

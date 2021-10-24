@@ -4,10 +4,11 @@ import sqlite3
 import os
 
 from sqlalchemy.orm.session import Session
+from sqlalchemy.sql.sqltypes import Enum
 import crud
 import models
 
-from typing import Any, List, Dict
+from typing import Any, List, Dict, Optional
 
 PSQL_DB=os.getenv('PSQL_DB')
 PSQL_PORT=os.getenv('PSQL_PORT')
@@ -22,6 +23,13 @@ FLIGHTDATA_DB='flightdata'
 AIRCRAFTDATA_DB='aircraftdata'
 AIRCRAFT_IMAGES_DB='aircraftimages'
 AIRPORTDATA_DB='airportdata'
+
+
+class DataSource(str, Enum):
+    opensky = "opensky"
+    flightaware = "flightaware"
+    aviationstack = "aviationstack"
+    virtualradar = "virtualradar"
 
 
 class Collector:
@@ -123,9 +131,66 @@ class Collector:
     #     print('Airport data is stored.')
 
 
+    def load_data(self, source: DataSource) -> str:
+        if source == DataSource.opensky:
+            return self.store_aircraftdata_opensky()
+
+        return f'invalid source: {source}'
+
+    def store_aircraftdata_opensky(self) -> str:
+        print('Storing aircraft data from opensky...')
+        csv_path = 'data/opensky.csv'
+        download_url = 'https://opensky-network.org/datasets/metadata/aircraftDatabase-2021-10.csv'
+
+        if not os.path.exists(csv_path):
+            response = requests.get(download_url, stream=True)
+            with open(csv_path, 'wb') as f:
+                for chunk in response:
+                    f.write(chunk)
+
+        def verify_date(date: str) -> Optional[str]:
+            if len(date) < 6:
+                return None
+            return date
+
+        with open(csv_path, 'r', newline='') as csv_file:
+            reader = csv.DictReader(csv_file, delimiter=',')
+
+            for row in reader:
+                icao = row['icao24'].upper()
+                if len(icao) != 6:
+                    continue
+                ac_type = row['typecode']
+
+                country = self.adsbdata.get_country(icao)
+                category = self.adsbdata.get_category(ac_type)
+                family = self.adsbdata.get_family(ac_type)
+
+                aircraft = models.Aircraft(
+                    icao=icao,
+                    registration=row['registration'],
+                    aircrafttype=ac_type,
+                    category=category,
+                    country=country,
+                    family=family,
+                    airline_iata=row['operatoriata'],
+                    plane_owner=row['owner'],
+                    model_name=row['model'],
+                    model_code=ac_type,
+                    production_line=verify_date(row['linenumber']),
+                    delivery_date=verify_date(row['built']),
+                    registration_date=verify_date(row['registered']),
+                    rollout_date=verify_date(row['firstflightdate'])
+                )
+
+                print(f'Adding {row["registration"]}...')
+                crud.update_aircraft(self.get_db(), aircraft)
+
+        return 'finished'
+
+
     def store_aircraftdata_flightaware(self) -> None:
         print('Storing aircraft data in postgres...')
-        batch_size = 10000
 
         with open('data/flightaware.csv', 'r') as f:
             reader = csv.reader(f, delimiter=',')

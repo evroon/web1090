@@ -1,3 +1,4 @@
+from collector import Collector, DataSource
 from config import Config
 from database import SessionLocal, engine
 import models, crud, schemas
@@ -147,6 +148,16 @@ async def image(
         data.stream_aircraft_image(icao, i, as_thumbnail),
         media_type="image/png"
     )
+
+
+@app.post('/load_data')
+async def load_data(
+    source: DataSource,
+    db: Session = Depends(get_db)
+) -> str:
+    data = ADSBData(db, config)
+    return data.collector.load_data(source)
+
 
 
 @app.on_event("startup")
