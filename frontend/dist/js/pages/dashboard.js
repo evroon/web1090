@@ -134,6 +134,7 @@ $(function () {
             $('#callsign').html(flight.flight_html.replace('24', '64'));
 
         var fields = [
+            'hex',
             'country',
             'registration',
             'aircrafttype',
