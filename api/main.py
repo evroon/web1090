@@ -85,7 +85,6 @@ async def routes(
 @app.get(
     '/aircraft',
     summary="Get aircraft",
-    response_model=List[schemas.Aircraft],
 )
 @cache(expire=60)
 async def aircraft(

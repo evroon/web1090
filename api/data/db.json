@@ -69,7 +69,7 @@
         "registration_date": "TIMESTAMPTZ",
         "rollout_date": "TIMESTAMPTZ",
         "last_seen_date": "TIMESTAMPTZ",
-        "aviationstack_id": "SERIAL",
+        "aviationstack_id": "INTEGER",
         "has_no_images": "BOOL",
         "active": "BOOL",
         "favorite": "BOOL",

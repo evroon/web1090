@@ -167,6 +167,7 @@ $(function () {
                 }
 
                 var element = $('#image-' + i.toString());
+                element.attr("src", "");
                 element.attr("src", thumbnail_src);
                 element.parent().attr("href", image_src);
             }
