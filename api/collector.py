@@ -4,7 +4,7 @@ import sqlite3
 import os
 
 from sqlalchemy.orm.session import Session
-from sqlalchemy.sql.sqltypes import Enum
+from enum import Enum
 import crud
 import models
 
