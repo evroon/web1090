@@ -177,7 +177,7 @@ $(function () {
         flights_table.clear().draw();
 
         flight_data.forEach(flight => {
-            flight.visible = flight.flight != null || flight.registration != null || flight.alt_baro != null;
+            flight.visible = flight.lat != null;
         });
 
         Object.keys(markers).forEach(icao => {
@@ -255,9 +255,6 @@ $(function () {
                 if (tooltip != '')
                     ac_marker.bindTooltip(tooltip);
             }
-
-            if (!flight.visible)
-                return;
 
             flight.flight_html = flight.flight;
 
