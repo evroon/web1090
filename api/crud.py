@@ -2,7 +2,7 @@ from sqlalchemy.orm import Session
 from typing import Optional, List, cast
 
 import schemas
-from models import Aircraft, Route, AircraftImage
+from models import Aircraft, Airline, Route, AircraftImage
 
 # Aircraft
 def get_aircraft(db: Session, icao: str) -> Optional[Aircraft]:
@@ -32,6 +32,10 @@ def update_aircraft(db: Session, db_aircraft: Aircraft) -> None:
 
     db.merge(db_aircraft)
     db.commit()
+
+
+def get_registrations_count(db: Session) -> int:
+    return int(db.query(Aircraft).count())
 
 
 # AircraftImage
@@ -87,5 +91,24 @@ def get_route_count(db: Session) -> int:
     return int(db.query(Route).count())
 
 
-def get_registrations_count(db: Session) -> int:
-    return int(db.query(Aircraft).count())
+# Airline
+def get_airline(db: Session, iata: str) -> Optional[Airline]:
+    return cast(
+        Optional[Airline],
+        db.query(Airline).filter(Airline.iata_code == iata).first()
+    )
+
+
+def create_airline(db: Session, db_airline: Airline) -> Airline:
+    db.add(db_airline)
+    db.commit()
+    db.refresh(db_airline)
+    return cast(Airline, db_airline)
+
+
+def update_airline(db: Session, db_airline: Airline) -> None:
+    if get_airline(db, db_airline.iata_code) is None:
+        create_airline(db, db_airline)
+
+    db.merge(db_airline)
+    db.commit()

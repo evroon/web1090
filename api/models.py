@@ -1,4 +1,4 @@
-from sqlalchemy import Boolean, Column, Integer, String, ForeignKey
+from sqlalchemy import Boolean, Column, Integer, String
 from sqlalchemy.sql.sqltypes import Float, Time
 
 from database import Base
@@ -69,3 +69,22 @@ class Route(Base):
     arr_loc = Column(String)
     arr_country = Column(String)
     arr_country_id = Column(String)
+
+
+class Airline(Base):
+    __tablename__ = "airlinedata"
+
+    iata_code = Column(String, primary_key=True, index=True)
+    iata_prefix_accounting = Column(Integer)
+    icao_code = Column(String)
+    aviationstack_id = Column(Integer)
+    airline_name = Column(String)
+    callsign = Column(String)
+    type = Column(String)
+    status = Column(String)
+    fleet_size = Column(Integer)
+    fleet_average_age = Column(Float)
+    date_founded = Column(Integer)
+    hub_code = Column(String)
+    country_name = Column(String)
+    country_iso2 = Column(String)

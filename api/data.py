@@ -4,7 +4,10 @@ import pycountry
 
 from typing import Optional, Dict, Any, Iterator
 
+from sqlalchemy.schema import CreateTable
 from sqlalchemy.orm.session import Session
+from responses import DUMP1090Response
+from models import Airline
 from collector import Collector
 from config import Config
 import crud
@@ -30,7 +33,7 @@ class ADSBData:
         registrations = crud.get_registrations_count(self.get_db())
 
         return {
-            'live_flight_count': len(live_flights['aircraft']),
+            'live_flight_count': len(list(live_flights)),
             'routes_count': routes,
             'registrations_count': registrations,
         }
@@ -40,40 +43,50 @@ class ADSBData:
         if not response.ok:
             raise ConnectionError('Could not connect to dump1090')
 
-        response_json: Dict[str, Any] = response.json()
+        response_json: DUMP1090Response = DUMP1090Response.parse_obj(response.json())
 
-        for ac in response_json['aircraft']:
-            ac['hex'] = ac['hex'].upper().strip()
-            icao = ac['hex']
+        for ac in response_json:
+            ac.hex = ac.hex.upper().strip()
+            icao = ac.hex
 
-            if 'flight' in ac:
-                ac['flight'] = ac['flight'].strip()
-                route = crud.get_route(self.get_db(), ac['flight'])
-                ac['route'] = route
+            if ac.flight:
+                ac.flight = ac.flight.strip()
+                route = crud.get_route(self.get_db(), ac.flight)
+                ac.route = route
 
                 if route is not None:
                     iata = route.airline_iata
 
                     if self.get_airline_icon(iata) is not None:
-                        ac['airline_icon'] = f"airline_icon.svg?iata={iata}"
+                        ac.airline_icon = f"airline_icon.svg?iata={iata}"
+                else:
+                    self.get_route_details(ac.flight)
+
 
             ac_type = crud.get_aircraft(self.get_db(), icao)
             if ac_type is not None:
-                ac['registration'] = ac_type.registration
-                ac['aircrafttype'] = ac_type.aircrafttype
-                ac['icon_category'] = ac_type.category
-                ac['country'] = ac_type.country
+                ac.registration = ac_type.registration
+                ac.aircrafttype = ac_type.aircrafttype
+                ac.icon_category = ac_type.category
+                ac.country = ac_type.country
 
                 images = self.collector.get_aircraft_image_data(ac_type, icao)
-                ac['images'] = []
+                ac.images = []
 
                 for i, _ in enumerate(images):
-                    ac['images'].append({
+                    ac.images.append({
                         'thumbnail_endpoint': f'image?icao={icao}&i={i}&as_thumbnail=true',
                         'image_endpoint': f'image?icao={icao}&i={i}&as_thumbnail=false',
                     })
 
         return response_json
+
+    def get_route_details(self, flight: str):
+        with open('data/to_update.csv', 'r') as f:
+            if not flight in f.read():
+                print(f'get_route_details {flight}')
+                with open('data/to_update.csv', 'a') as f:
+                    f.write(flight + '\n')
 
     def get_ac_icon(self,
         category: Optional[str],

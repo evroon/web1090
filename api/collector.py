@@ -5,6 +5,8 @@ import os
 
 from sqlalchemy.orm.session import Session
 from enum import Enum
+from responses import AviationStackAirlineResponse
+from conversion import aviationstack_airline_to_airline
 import crud
 import models
 
@@ -29,6 +31,7 @@ class DataSource(str, Enum):
     opensky = "opensky"
     flightaware = "flightaware"
     aviationstack = "aviationstack"
+    aviationstack_airlines = "aviationstack.airlines"
     virtualradar = "virtualradar"
 
 
@@ -134,8 +137,44 @@ class Collector:
     def load_data(self, source: DataSource) -> str:
         if source == DataSource.opensky:
             return self.store_aircraftdata_opensky()
+        elif source == DataSource.aviationstack_airlines:
+            return self.store_airlinedata_aviationstack()
 
         return f'invalid source: {source}'
+
+    def store_airlinedata_aviationstack(self) -> str:
+        print('Storing airline data from aviationstack...')
+        total = 1e8
+        pagination = 100
+        i = 1300
+
+        while i < total:
+            params = {
+                'access_key': AVIATIONSTACK_KEY,
+                'offset': i,
+            }
+            api_result = requests.get('http://api.aviationstack.com/v1/airlines', params)
+
+            if not api_result.ok:
+                print('Error:', api_result.content)
+                return
+
+            for a in api_result.json()['data']:
+                if not a['airline_name']:
+                    print(a)
+
+            airlines: AviationStackAirlineResponse = AviationStackAirlineResponse.parse_obj(api_result.json())
+            total = airlines.pagination.total
+            print(f'Aviationstack airlines: {i} / {total}')
+
+            for airline in airlines:
+                print(airline)
+                if airline.airline_name:
+                    crud.update_airline(self.get_db(), aviationstack_airline_to_airline(airline))
+
+            i += pagination
+
+        return 'Aircraft data from aviationstack is stored.'
 
     def store_aircraftdata_opensky(self) -> str:
         print('Storing aircraft data from opensky...')

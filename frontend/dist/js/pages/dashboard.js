@@ -308,12 +308,6 @@ $(function () {
         setInterval(RefreshFlights, 1000);
         setInterval(RefreshStatistics, 30000);
         RefreshStatistics();
-
-        if ($('#ac-type-chart').length > 0) {
-            fetch(api_domain + 'aircrafttypes')
-                .then(response => response.json())
-                .then(data => UpdateAircraftTypes(data.data));
-        }
     }
 
     // Make the dashboard widgets sortable Using jquery UI

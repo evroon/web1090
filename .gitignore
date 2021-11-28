@@ -5,3 +5,4 @@ api/data/logos
 api/data/images
 frontend/config.json
 api/data/opensky.csv
+api/data/to_update.csv
