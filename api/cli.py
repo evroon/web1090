@@ -1,10 +1,9 @@
-from sqlalchemy.orm import Session
-
 import models
 from collector import DataSource
 from config import Config
 from data import ADSBData
 from database import SessionLocal, engine
+from sqlalchemy.orm import Session
 
 models.Base.metadata.create_all(bind=engine)
 

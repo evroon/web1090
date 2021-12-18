@@ -1,7 +1,6 @@
+from database import Base
 from sqlalchemy import Boolean, Column, Integer, String
 from sqlalchemy.sql.sqltypes import Float, Time
-
-from database import Base
 
 
 class AircraftImage(Base):

@@ -1,5 +1,12 @@
 from typing import List, Optional, Union
 
+import crud
+import models
+import schemas
+from collector import Collector, DataSource
+from config import Config
+from data import ADSBData
+from database import SessionLocal, engine
 from fastapi import FastAPI, Query, Response
 from fastapi.params import Depends
 from fastapi_cache import FastAPICache
@@ -9,14 +16,6 @@ from responses import DUMP1090Response
 from sqlalchemy.orm import Session
 from starlette.middleware.cors import CORSMiddleware
 from starlette.responses import FileResponse, StreamingResponse
-
-import crud
-import models
-import schemas
-from collector import Collector, DataSource
-from config import Config
-from data import ADSBData
-from database import SessionLocal, engine
 
 models.Base.metadata.create_all(bind=engine)
 

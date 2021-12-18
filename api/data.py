@@ -1,17 +1,16 @@
 import os
 from typing import Any, Dict, Iterator, Optional
 
+import crud
 import pycountry
 import requests
+from collector import Collector
+from config import Config
 from dotenv import load_dotenv
+from models import Airline
 from responses import AircraftImagePayload, DUMP1090Response
 from sqlalchemy.orm.session import Session
 from sqlalchemy.schema import CreateTable
-
-import crud
-from collector import Collector
-from config import Config
-from models import Airline
 
 load_dotenv()
 

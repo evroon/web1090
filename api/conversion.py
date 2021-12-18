@@ -1,6 +1,5 @@
-from responses import AviationStackAirline, AviationStackRealTimeFlight
-
 from models import Aircraft, Airline, Route
+from responses import AviationStackAirline, AviationStackRealTimeFlight
 
 
 def aviationstack_airline_to_airline(as_airline: AviationStackAirline) -> Airline:

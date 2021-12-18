@@ -16,4 +16,4 @@ jobs:
         run: pip3 install -r requirements.txt
 
       - name: Run isort
-        run: isort -c
+        run: python3 -m isort . --check

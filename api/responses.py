@@ -1,8 +1,7 @@
 from typing import Iterator, List, Optional
 
-from pydantic import BaseModel
-
 from models import Aircraft, Airline, Route
+from pydantic import BaseModel
 
 
 class AircraftImagePayload(BaseModel):

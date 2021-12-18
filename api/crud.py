@@ -1,9 +1,8 @@
 from typing import List, Optional, cast
 
-from sqlalchemy.orm import Session
-
 import schemas
 from models import Aircraft, AircraftImage, Airline, Route
+from sqlalchemy.orm import Session
 
 
 # Aircraft
