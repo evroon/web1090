@@ -187,9 +187,7 @@ class Collector:
         i = 0
 
         while i < total:
-            print(
-                f'Collecting Aviationstack flights for {flight_icao}: {i} / {total}'
-            )
+            print(f'Collecting Aviationstack flights for {flight_icao}: {i} / {total}')
             params: Dict[str, Any] = {'offset': i}
 
             if airline_icao is not None:
@@ -202,7 +200,9 @@ class Collector:
             if api_response == {}:
                 return
 
-            flights: AviationStackFlightResponse = AviationStackFlightResponse.parse_obj(api_response)
+            flights: AviationStackFlightResponse = AviationStackFlightResponse.parse_obj(
+                api_response
+            )
             total = flights.pagination.total
 
             for _, flight in enumerate(flights):

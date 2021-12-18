@@ -64,7 +64,10 @@ class ADSBData:
 
                     if self.get_airline_icon(iata) is not None:
                         ac.airline_icon = f"airline_icon.svg?iata={iata}"
-                elif ac_type is None or ac.flight.strip() != ac_type.registration.replace('-', '').strip():
+                elif (
+                    ac_type is None
+                    or ac.flight.strip() != ac_type.registration.replace('-', '').strip()
+                ):
                     self.get_route_details(ac.flight)
 
             if ac_type is not None:
@@ -79,10 +82,10 @@ class ADSBData:
                 for i, _ in enumerate(images):
                     ac.images.append(
                         AircraftImagePayload.parse_obj(
-                        {
-                            'thumbnail_endpoint': f'image?icao={icao}&i={i}&as_thumbnail=true',
-                            'image_endpoint': f'image?icao={icao}&i={i}&as_thumbnail=false',
-                        }
+                            {
+                                'thumbnail_endpoint': f'image?icao={icao}&i={i}&as_thumbnail=true',
+                                'image_endpoint': f'image?icao={icao}&i={i}&as_thumbnail=false',
+                            }
                         )
                     )
 

@@ -134,4 +134,4 @@ class AviationStackFlightResponse(BaseModel):
     pagination: AviationStackPagination
 
     def __iter__(self) -> Iterator[AviationStackRealTimeFlight]:  # type: ignore[override]
-        return iter(self.data)#  # type: ignore[arg-type]
+        return iter(self.data)  #  # type: ignore[arg-type]

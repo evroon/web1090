@@ -22,6 +22,7 @@ def aviationstack_flight_to_route(as_flight: AviationStackRealTimeFlight) -> Rou
         arr_iata=as_flight.arrival.iata,
     )
 
+
 def aviationstack_flight_to_aircraft(as_flight: AviationStackRealTimeFlight) -> Aircraft:
     return Aircraft(
         icao=as_flight.aircraft.icao,
