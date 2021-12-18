@@ -9,8 +9,10 @@ import crud
 import models
 import requests
 from conversion import (
-    aviationstack_airline_to_airline, aviationstack_flight_to_aircraft,
-    aviationstack_flight_to_route,)
+    aviationstack_airline_to_airline,
+    aviationstack_flight_to_aircraft,
+    aviationstack_flight_to_route,
+)
 from dotenv import load_dotenv
 from responses import AviationStackAirlineResponse, AviationStackFlightResponse
 from sqlalchemy.orm.session import Session
