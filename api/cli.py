@@ -1,11 +1,10 @@
-from collector import DataSource
-from config import Config
-from database import SessionLocal, engine
-import models
-
-from data import ADSBData
 from sqlalchemy.orm import Session
 
+import models
+from collector import DataSource
+from config import Config
+from data import ADSBData
+from database import SessionLocal, engine
 
 models.Base.metadata.create_all(bind=engine)
 

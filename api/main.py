@@ -1,20 +1,22 @@
-from collector import Collector, DataSource
-from config import Config
-from database import SessionLocal, engine
-import models, crud, schemas
+from typing import List, Optional, Union
 
-from data import ADSBData
-from fastapi import FastAPI, Response, Query
+from fastapi import FastAPI, Query, Response
 from fastapi.params import Depends
 from fastapi_cache import FastAPICache
-from fastapi_cache.decorator import cache
 from fastapi_cache.backends.inmemory import InMemoryBackend
-from starlette.middleware.cors import CORSMiddleware
-from starlette.responses import StreamingResponse, FileResponse
+from fastapi_cache.decorator import cache
+from responses import DUMP1090Response
 from sqlalchemy.orm import Session
+from starlette.middleware.cors import CORSMiddleware
+from starlette.responses import FileResponse, StreamingResponse
 
-from typing import Union, Optional, List
-
+import crud
+import models
+import schemas
+from collector import Collector, DataSource
+from config import Config
+from data import ADSBData
+from database import SessionLocal, engine
 
 models.Base.metadata.create_all(bind=engine)
 
@@ -55,7 +57,7 @@ config = Config()
     '/liveflights',
     summary="Get currently detected flights",
 )
-async def liveflights(db: Session = Depends(get_db)) -> dict:
+async def liveflights(db: Session = Depends(get_db)) -> DUMP1090Response:
     data = ADSBData(db, config)
     return data.get_live_flights()
 

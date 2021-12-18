@@ -1,19 +1,20 @@
-import requests
 import csv
-import sqlite3
 import os
-
-from sqlalchemy.orm.session import Session
-from enum import Enum
-from responses import AviationStackAirlineResponse, AviationStackFlightResponse
 import random
-from conversion import aviationstack_airline_to_airline, aviationstack_flight_to_aircraft, aviationstack_flight_to_route
+import sqlite3
+from enum import Enum
+from typing import Any, Dict, List, Optional
+
+import requests
+from dotenv import load_dotenv
+from responses import AviationStackAirlineResponse, AviationStackFlightResponse
+from sqlalchemy.orm.session import Session
+
 import crud
 import models
-from dotenv import load_dotenv
-
-from typing import Any, List, Dict, Optional
-
+from conversion import (aviationstack_airline_to_airline,
+                        aviationstack_flight_to_aircraft,
+                        aviationstack_flight_to_route)
 
 load_dotenv()
 
@@ -24,7 +25,7 @@ PSQL_USER = os.getenv('PSQL_USER')
 PSQL_PASSWORD = os.getenv('PSQL_PASSWORD')
 DUMP1090_ADDRESS = os.getenv('DUMP1090_ADDRESS')
 VIRTUALRADAR_SQLITE_DB_PATH = 'data/StandingData.sqb'
-AVIATIONSTACK_KEY = os.getenv('AVIATIONSTACK_KEY').split(',')
+AVIATIONSTACK_KEY = str(os.getenv('AVIATIONSTACK_KEY')).split(',')
 
 ROUTESDATA_DB = 'routesdata'
 FLIGHTDATA_DB = 'flightdata'
@@ -158,7 +159,7 @@ class Collector:
         }
 
         api_response = requests.get(f'http://api.aviationstack.com/v1/{endpoint}', all_params)
-        json_response = api_response.json()
+        json_response = dict(api_response.json())
 
         if not api_response.ok:
 
@@ -189,7 +190,7 @@ class Collector:
             print(
                 f'Collecting Aviationstack flights for {flight_icao}: {i} / {total}'
             )
-            params = {'offset': i}
+            params: Dict[str, Any] = {'offset': i}
 
             if airline_icao is not None:
                 params['airline_icao'] = airline_icao
@@ -201,7 +202,7 @@ class Collector:
             if api_response == {}:
                 return
 
-            flights = AviationStackFlightResponse.parse_obj(api_response)
+            flights: AviationStackFlightResponse = AviationStackFlightResponse.parse_obj(api_response)
             total = flights.pagination.total
 
             for _, flight in enumerate(flights):

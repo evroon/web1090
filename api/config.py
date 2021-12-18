@@ -1,6 +1,6 @@
 import json
 from datetime import datetime
-from typing import Dict, Any
+from typing import Any, Dict
 
 
 class Config:

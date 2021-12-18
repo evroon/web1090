@@ -1,8 +1,10 @@
+from typing import List, Optional, cast
+
 from sqlalchemy.orm import Session
-from typing import Optional, List, cast
 
 import schemas
-from models import Aircraft, Airline, Route, AircraftImage
+from models import Aircraft, AircraftImage, Airline, Route
+
 
 # Aircraft
 def get_aircraft(db: Session, icao: str) -> Optional[Aircraft]:

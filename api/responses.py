@@ -1,4 +1,4 @@
-from typing import List, Iterator, Optional
+from typing import Iterator, List, Optional
 
 from pydantic import BaseModel
 
@@ -122,16 +122,16 @@ class AviationStackAircraft(BaseModel):
 
 
 class AviationStackRealTimeFlight(BaseModel):
-    departure: Optional[AviationStackAirport]
-    arrival: Optional[AviationStackAirport]
-    airline: Optional[AviationStackFlightAirline]
-    flight: Optional[AviationStackFlight]
-    aircraft: Optional[AviationStackAircraft]
+    departure: AviationStackAirport
+    arrival: AviationStackAirport
+    airline: AviationStackFlightAirline
+    flight: AviationStackFlight
+    aircraft: AviationStackAircraft
 
 
 class AviationStackFlightResponse(BaseModel):
     data: List[AviationStackRealTimeFlight]
     pagination: AviationStackPagination
 
-    def __iter__(self) -> Iterator[AviationStackAirline]:  # type: ignore
-        return iter(self.data)
+    def __iter__(self) -> Iterator[AviationStackRealTimeFlight]:  # type: ignore[override]
+        return iter(self.data)#  # type: ignore[arg-type]

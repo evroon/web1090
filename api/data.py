@@ -1,18 +1,17 @@
 import os
-import requests
+from typing import Any, Dict, Iterator, Optional
+
 import pycountry
-
-from typing import Optional, Dict, Any, Iterator
-
-from sqlalchemy.schema import CreateTable
+import requests
+from dotenv import load_dotenv
+from responses import AircraftImagePayload, DUMP1090Response
 from sqlalchemy.orm.session import Session
-from responses import DUMP1090Response
-from models import Airline
+from sqlalchemy.schema import CreateTable
+
+import crud
 from collector import Collector
 from config import Config
-from dotenv import load_dotenv
-import crud
-
+from models import Airline
 
 load_dotenv()
 
@@ -43,7 +42,7 @@ class ADSBData:
             'registrations_count': registrations,
         }
 
-    def get_live_flights(self) -> Dict[str, Any]:
+    def get_live_flights(self) -> DUMP1090Response:
         response = requests.get('http://localhost:8080/data/aircraft.json')
         if not response.ok:
             raise ConnectionError('Could not connect to dump1090')
@@ -65,7 +64,7 @@ class ADSBData:
 
                     if self.get_airline_icon(iata) is not None:
                         ac.airline_icon = f"airline_icon.svg?iata={iata}"
-                elif ac.flight.strip() != ac_type.registration.replace('-', '').strip():
+                elif ac_type is None or ac.flight.strip() != ac_type.registration.replace('-', '').strip():
                     self.get_route_details(ac.flight)
 
             if ac_type is not None:
@@ -79,15 +78,17 @@ class ADSBData:
 
                 for i, _ in enumerate(images):
                     ac.images.append(
+                        AircraftImagePayload.parse_obj(
                         {
                             'thumbnail_endpoint': f'image?icao={icao}&i={i}&as_thumbnail=true',
                             'image_endpoint': f'image?icao={icao}&i={i}&as_thumbnail=false',
                         }
+                        )
                     )
 
         return response_json
 
-    def get_route_details(self, flight: str):
+    def get_route_details(self, flight: str) -> None:
         with open('data/to_update.csv', 'r') as f:
             if not flight in f.read():
                 print(f'get_route_details {flight}')
