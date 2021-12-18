@@ -1,3 +1,4 @@
+from collector import DataSource
 from config import Config
 from database import SessionLocal, engine
 import models
@@ -17,9 +18,10 @@ def get_db() -> Session:
     finally:
         db.close()
 
+
 config = Config()
 
 
 with SessionLocal() as db:
     data = ADSBData(db, config)
-    print(data.collector.load_data('aviationstack.airlines'))
+    print(data.collector.load_data(DataSource.aviationstack_missing_routes))

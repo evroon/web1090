@@ -93,3 +93,45 @@ class AviationStackAirlineResponse(BaseModel):
 
     def __iter__(self) -> Iterator[AviationStackAirline]:  # type: ignore
         return iter(self.data)
+
+
+class AviationStackAirport(BaseModel):
+    airport: Optional[str]
+    timezone: Optional[str]
+    iata: Optional[str]
+    icao: Optional[str]
+
+
+class AviationStackFlightAirline(BaseModel):
+    name: Optional[str]
+    iata: Optional[str]
+    icao: Optional[str]
+
+
+class AviationStackFlight(BaseModel):
+    number: Optional[str]
+    iata: Optional[str]
+    icao: Optional[str]
+
+
+class AviationStackAircraft(BaseModel):
+    registration: Optional[str]
+    iata: Optional[str]
+    icao: Optional[str]
+    icao24: Optional[str]
+
+
+class AviationStackRealTimeFlight(BaseModel):
+    departure: Optional[AviationStackAirport]
+    arrival: Optional[AviationStackAirport]
+    airline: Optional[AviationStackFlightAirline]
+    flight: Optional[AviationStackFlight]
+    aircraft: Optional[AviationStackAircraft]
+
+
+class AviationStackFlightResponse(BaseModel):
+    data: List[AviationStackRealTimeFlight]
+    pagination: AviationStackPagination
+
+    def __iter__(self) -> Iterator[AviationStackAirline]:  # type: ignore
+        return iter(self.data)

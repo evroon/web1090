@@ -47,6 +47,7 @@ def get_db() -> Session:
 async def get_cache() -> int:
     return 1
 
+
 config = Config()
 
 
@@ -75,9 +76,7 @@ async def statistics(db: Session = Depends(get_db)) -> dict:
 )
 @cache(expire=60)
 async def routes(
-    skip: int = 0,
-    limit: int = 100,
-    db: Session = Depends(get_db)
+    skip: int = 0, limit: int = 100, db: Session = Depends(get_db)
 ) -> List[models.Route]:
     return crud.get_routes_paginated(db, skip, limit)
 
@@ -88,9 +87,7 @@ async def routes(
 )
 @cache(expire=60)
 async def aircraft(
-    skip: int = 0,
-    limit: int = 100,
-    db: Session = Depends(get_db)
+    skip: int = 0, limit: int = 100, db: Session = Depends(get_db)
 ) -> List[models.Aircraft]:
     return crud.get_aircraft_paginated(db, skip, limit)
 
@@ -104,7 +101,7 @@ async def ac_icon(
     adsb_category: str = None,
     color: str = None,
     is_selected: bool = False,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ) -> Response:
     data = ADSBData(db, config)
     icon_svg = data.get_ac_icon(category, adsb_category, color, is_selected)
@@ -115,10 +112,7 @@ async def ac_icon(
     '/airline_icon.svg',
     summary="Get icon of an airline",
 )
-async def airline_icon(
-    iata: str = 'KL',
-    db: Session = Depends(get_db)
-) -> Optional[FileResponse]:
+async def airline_icon(iata: str = 'KL', db: Session = Depends(get_db)) -> Optional[FileResponse]:
     data = ADSBData(db, config)
     icon_png = data.get_airline_icon(iata)
     if icon_png is not None:
@@ -135,7 +129,7 @@ async def image(
     icao: str = Query(None, title='test', description='ICAO hex code of aircraft'),
     i: int = Query(0, description='index of the image'),
     as_thumbnail: bool = Query(False, description='Load as thumbnail or as full image'),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ) -> Union[FileResponse, StreamingResponse]:
     data = ADSBData(db, config)
     image_png = data.get_aircraft_image(icao, i, as_thumbnail)
@@ -144,19 +138,8 @@ async def image(
         return FileResponse(image_png)
 
     return StreamingResponse(
-        data.stream_aircraft_image(icao, i, as_thumbnail),
-        media_type="image/png"
+        data.stream_aircraft_image(icao, i, as_thumbnail), media_type="image/png"
     )
-
-
-@app.post('/load_data')
-async def load_data(
-    source: DataSource,
-    db: Session = Depends(get_db)
-) -> str:
-    data = ADSBData(db, config)
-    return data.collector.load_data(source)
-
 
 
 @app.on_event("startup")

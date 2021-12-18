@@ -10,13 +10,18 @@ from responses import DUMP1090Response
 from models import Airline
 from collector import Collector
 from config import Config
+from dotenv import load_dotenv
 import crud
 
 
-PSQL_DB=os.getenv('PSQL_DB')
-PSQL_PORT=os.getenv('PSQL_PORT')
-PSQL_USER=os.getenv('PSQL_USER')
-PSQL_PASSWORD=os.getenv('PSQL_PASSWORD')
+load_dotenv()
+
+
+PSQL_DB = os.getenv('PSQL_DB')
+PSQL_PORT = os.getenv('PSQL_PORT')
+PSQL_USER = os.getenv('PSQL_USER')
+PSQL_PASSWORD = os.getenv('PSQL_PASSWORD')
+
 
 class ADSBData:
     def __init__(self, db: Any, config: Config) -> None:
@@ -48,6 +53,7 @@ class ADSBData:
         for ac in response_json:
             ac.hex = ac.hex.upper().strip()
             icao = ac.hex
+            ac_type = crud.get_aircraft(self.get_db(), icao)
 
             if ac.flight:
                 ac.flight = ac.flight.strip()
@@ -59,11 +65,9 @@ class ADSBData:
 
                     if self.get_airline_icon(iata) is not None:
                         ac.airline_icon = f"airline_icon.svg?iata={iata}"
-                else:
+                elif ac.flight.strip() != ac_type.registration.replace('-', '').strip():
                     self.get_route_details(ac.flight)
 
-
-            ac_type = crud.get_aircraft(self.get_db(), icao)
             if ac_type is not None:
                 ac.registration = ac_type.registration
                 ac.aircrafttype = ac_type.aircrafttype
@@ -74,10 +78,12 @@ class ADSBData:
                 ac.images = []
 
                 for i, _ in enumerate(images):
-                    ac.images.append({
-                        'thumbnail_endpoint': f'image?icao={icao}&i={i}&as_thumbnail=true',
-                        'image_endpoint': f'image?icao={icao}&i={i}&as_thumbnail=false',
-                    })
+                    ac.images.append(
+                        {
+                            'thumbnail_endpoint': f'image?icao={icao}&i={i}&as_thumbnail=true',
+                            'image_endpoint': f'image?icao={icao}&i={i}&as_thumbnail=false',
+                        }
+                    )
 
         return response_json
 
@@ -88,11 +94,12 @@ class ADSBData:
                 with open('data/to_update.csv', 'a') as f:
                     f.write(flight + '\n')
 
-    def get_ac_icon(self,
+    def get_ac_icon(
+        self,
         category: Optional[str],
         adsb_category: Optional[str],
         color: Optional[str] = None,
-        is_selected: bool = False
+        is_selected: bool = False,
     ) -> str:
         if category not in self.config.ac_icons or category == 'unknown':
             if adsb_category in self.config.ac_categories['adsb_categories']:
@@ -109,7 +116,9 @@ class ADSBData:
         icon = str(self.config.ac_icons[category]['svg'])
         icon = icon.replace('aircraft_color_fill', color)
         icon = icon.replace('aircraft_color_stroke', '"#FFFFFF"')
-        icon = icon.replace('add_stroke_selected', ' stroke="black" stroke-width="1px"' if is_selected else '')
+        icon = icon.replace(
+            'add_stroke_selected', ' stroke="black" stroke-width="1px"' if is_selected else ''
+        )
         return icon
 
     def get_airline_icon(self, iata: str) -> Optional[str]:
@@ -131,7 +140,9 @@ class ADSBData:
             return None
 
         if not os.path.exists(cache_path):
-            response = requests.get(f'https://images.kiwi.com/airlines/{size}/{iata}.png', stream=True)
+            response = requests.get(
+                f'https://images.kiwi.com/airlines/{size}/{iata}.png', stream=True
+            )
 
             if response.ok:
                 with open(cache_path, 'wb') as f:
@@ -171,7 +182,9 @@ class ADSBData:
 
         return None
 
-    def stream_aircraft_image(self, icao: str, i: int, as_thumbnail: bool = False) -> Iterator[bytes]:
+    def stream_aircraft_image(
+        self, icao: str, i: int, as_thumbnail: bool = False
+    ) -> Iterator[bytes]:
         cache_path = self.get_aircraft_image_cache_path(icao, i, as_thumbnail)
         images = crud.get_images(self.get_db(), icao)
         aircraft = crud.get_aircraft(self.get_db(), icao)
@@ -193,7 +206,9 @@ class ADSBData:
                         f.write(chunk)
                         yield chunk
             finally:
-                if 'Content-Length' in response.headers and int(response.headers['Content-Length']) > os.path.getsize(cache_path):
+                if 'Content-Length' in response.headers and int(
+                    response.headers['Content-Length']
+                ) > os.path.getsize(cache_path):
                     os.remove(cache_path)
         else:
             print(f'Could not retrieve image for aircraft: {icao}')

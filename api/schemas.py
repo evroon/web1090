@@ -34,6 +34,5 @@ class RouteCreate(RouteBase):
 
 
 class Route(RouteBase):
-
     class Config:
         orm_mode = True

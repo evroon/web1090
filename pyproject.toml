@@ -1,0 +1,13 @@
+[tool.black]
+  py37 = true
+  line-length = 100
+  skip-string-normalization = true
+  exclude = '(^\..+|local_cache)'
+
+[tool.isort]
+  profile = "black"
+  multi_line_output = 3
+  line_length = 100
+  atomic = true
+  skip_gitignore = true
+  case_sensitive = true

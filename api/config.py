@@ -2,6 +2,7 @@ import json
 from datetime import datetime
 from typing import Dict, Any
 
+
 class Config:
     def __init__(self) -> None:
         self.cached_routes: Dict[str, Any] = {}
