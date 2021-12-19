@@ -1,9 +1,7 @@
-from typing import List, Optional, Union
+from typing import Any, Dict, List, Optional, Union
 
 import crud
 import models
-import schemas
-from collector import Collector, DataSource
 from config import Config
 from data import ADSBData
 from database import SessionLocal, engine
@@ -66,7 +64,7 @@ async def liveflights(db: Session = Depends(get_db)) -> DUMP1090Response:
     summary="Get flight data",
 )
 @cache(expire=60)
-async def statistics(db: Session = Depends(get_db)) -> dict:
+async def statistics(db: Session = Depends(get_db)) -> Dict[str, Any]:
     data = ADSBData(db, config)
     return data.get_statistics()
 

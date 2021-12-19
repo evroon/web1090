@@ -259,8 +259,10 @@ $(function () {
 
             flight.flight_html = flight.flight;
 
-            if (flight.flight != null && flight.route != null)
-                flight.flight_html = `<span title="${flight.route.airline_name}">${flight.flight}</span>`;
+            if (flight.flight != null && flight.route != null) {
+                var flight_title = flight.flight + (flight.route.iata ? ` / ${flight.route.iata}` : "");
+                flight.flight_html = `<span title="${flight.route.airline_name}">${flight_title}</span>`;
+            }
 
             if (flight.airline_icon != null)
                 flight.flight_html = `<img style="width: 24px; height: auto; margin-right: 8px;" src="${api_domain + flight.airline_icon}"></img>` + flight.flight_html;

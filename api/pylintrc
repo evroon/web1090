@@ -1,0 +1,35 @@
+[MASTER]
+jobs=0  # Use all available cores.
+<!-- load-plugins=lint.implicit_string_concatenation,
+             lint.print,
+             lint.bool_op_with_non_bool_constants,
+             lint.invariant_function_argument, -->
+
+[MESSAGES CONTROL]
+disable=format,  # Because we use black.
+        design,  # Because we do code review.
+        invalid-name,  # Should come up in code review.
+        missing-docstring,  # Should come up in code review.
+        no-else-return,  # Because I don't agree.
+        no-else-raise,  # Because I don't agree.
+        unsubscriptable-object,  # Because it interferes with type annotations.
+        ungrouped-imports,  # Because it gives a false positive if you have both `import a` and `from a import ...`.
+        unused-argument,  # Since most of us are using PyCharm most occurrences of this will be intentional.
+        no-self-use,  # I don't like the @staticmethod noise.
+        not-callable,  # Mypy is better at checking this.
+        undefined-variable,  # Mypy is better at checking this.
+        no-member,  # Mypy is better at checking this.
+        broad-except,  # Error handling is just ignored in the Python community, so we have no way
+                       # of knowing what kinds of errors a function could possibly throw.
+        no-name-in-module,  # Gives false positives.
+        len-as-condition,  # Because ` iflen(SEQUENCE) == 0` is more readable and more explicit than
+                           # `if not SEQUENCE` since SEQUENCE cannot be None when testing `len()`
+        abstract-method,  # Pylint is not smart enough to support semi concrete classes
+        invalid-unary-operand-type,  # mypy checks this as well, but is better at it.
+        logging-fstring-interpolation,  # I like fstrings, lets allow us to log with them.
+        logging-not-lazy,  # Logging with f string instead of lazily is fine for now.
+        raise-missing-from, # Consider explicitly re-raising using the `from`, but we know this
+        fixme,  # We want to be able to add todos.
+        # false positives are produced for NamedTuple until we run a version of astroid that has
+        # this fix https://github.com/PyCQA/astroid/pull/858
+        inherit-non-class,

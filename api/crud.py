@@ -68,6 +68,26 @@ def get_route(db: Session, icao: str) -> Optional[Route]:
     return cast(Optional[Route], db.query(Route).filter(Route.icao == icao).first())
 
 
+def get_route_by_dep_iata(db: Session, dep_iata: str) -> Optional[Route]:
+    return cast(
+        Optional[Route],
+        db.query(Route)
+        .filter(Route.dep_iata == dep_iata)
+        .filter(Route.dep_icao.isnot(None))
+        .first(),
+    )
+
+
+def get_route_by_arr_iata(db: Session, arr_iata: str) -> Optional[Route]:
+    return cast(
+        Optional[Route],
+        db.query(Route)
+        .filter(Route.arr_iata == arr_iata)
+        .filter(Route.arr_icao.isnot(None))
+        .first(),
+    )
+
+
 def get_routes_paginated(db: Session, skip: int = 0, limit: int = 100) -> List[Route]:
     return cast(List[Route], db.query(Route).offset(skip).limit(limit).all())
 
@@ -109,3 +129,26 @@ def update_airline(db: Session, db_airline: Airline) -> None:
 
     db.merge(db_airline)
     db.commit()
+
+
+def update_route_airport_data(db: Session, db_route: Route) -> None:
+    dep_airport: Route = get_route_by_dep_iata(db, db_route.dep_iata)
+    arr_airport: Route = get_route_by_arr_iata(db, db_route.arr_iata)
+
+    db_route.dep_airport = dep_airport.dep_airport
+    db_route.dep_icao = dep_airport.dep_icao
+    db_route.dep_country = dep_airport.dep_country
+    db_route.dep_country_id = dep_airport.dep_country_id
+    db_route.dep_lat = dep_airport.dep_lat
+    db_route.dep_lon = dep_airport.dep_lon
+    db_route.dep_alt = dep_airport.dep_alt
+
+    db_route.arr_airport = arr_airport.arr_airport
+    db_route.arr_icao = arr_airport.arr_icao
+    db_route.arr_country = arr_airport.arr_country
+    db_route.arr_country_id = arr_airport.arr_country_id
+    db_route.arr_lat = arr_airport.arr_lat
+    db_route.arr_lon = arr_airport.arr_lon
+    db_route.arr_alt = arr_airport.arr_alt
+
+    update_route(db, db_route)

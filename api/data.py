@@ -6,19 +6,9 @@ import pycountry
 import requests
 from collector import Collector
 from config import Config
-from dotenv import load_dotenv
-from models import Airline
+from logger import get_logger
 from responses import AircraftImagePayload, DUMP1090Response
 from sqlalchemy.orm.session import Session
-from sqlalchemy.schema import CreateTable
-
-load_dotenv()
-
-
-PSQL_DB = os.getenv('PSQL_DB')
-PSQL_PORT = os.getenv('PSQL_PORT')
-PSQL_USER = os.getenv('PSQL_USER')
-PSQL_PASSWORD = os.getenv('PSQL_PASSWORD')
 
 
 class ADSBData:
@@ -26,11 +16,12 @@ class ADSBData:
         self.db = db
         self.config = config
         self.collector = Collector(self)
+        self.logger = get_logger('ADS-B Data')
 
     def get_db(self) -> Session:
         return self.db
 
-    def get_statistics(self) -> dict:
+    def get_statistics(self) -> Dict[str, Any]:
         live_flights = self.get_live_flights()
         routes = crud.get_route_count(self.get_db())
         registrations = crud.get_registrations_count(self.get_db())
@@ -93,7 +84,7 @@ class ADSBData:
     def get_route_details(self, flight: str) -> None:
         with open('data/to_update.csv', 'r') as f:
             if not flight in f.read():
-                print(f'get_route_details {flight}')
+                self.logger.debug(f'get_route_details {flight}')
                 with open('data/to_update.csv', 'a') as f:
                     f.write(flight + '\n')
 
@@ -128,7 +119,9 @@ class ADSBData:
         iata = iata.upper()
 
         if len(iata) != 2:
-            print(f'IATA Code {iata} is invalid. IATA codes consist of two letters (e.g. KL).')
+            self.logger.warning(
+                f'IATA Code {iata!r} is invalid. IATA codes consist of two letters (e.g. KL).'
+            )
             return None
 
         size = 64
@@ -152,7 +145,7 @@ class ADSBData:
                     for chunk in response:
                         f.write(chunk)
             else:
-                print(f'Could not retrieve logo for airline: {iata}')
+                self.logger.error(f'Could not retrieve logo for airline: {iata}')
                 with open(cache_path_404, 'wb') as f:
                     f.write(response.content)
 
@@ -168,7 +161,9 @@ class ADSBData:
         icao = icao.upper()
 
         if len(icao) != 6:
-            print(f'ICAO Code {icao} is invalid. ICAO codes consist of six hexadecimal characters.')
+            self.logger.warning(
+                f'ICAO Code {icao} is invalid. ICAO codes consist of six hexadecimal characters.'
+            )
             return None
 
         if i < 0:
@@ -214,7 +209,7 @@ class ADSBData:
                 ) > os.path.getsize(cache_path):
                     os.remove(cache_path)
         else:
-            print(f'Could not retrieve image for aircraft: {icao}')
+            self.logger.error(f'Could not retrieve image for aircraft: {icao}')
 
     def get_category(self, ac_type_icao: str) -> Optional[str]:
         if ac_type_icao == '':
@@ -240,7 +235,7 @@ class ADSBData:
 
         # Retrieve from cache.
         if name in self.config.country_ids:
-            return self.config.country_ids[name]
+            return str(self.config.country_ids[name])
 
         country = pycountry.countries.get(name=name)
 
@@ -253,7 +248,7 @@ class ADSBData:
                 pass
 
         if country is None:
-            print(f'Error: Could not resolve country "{name}"')
+            self.logger.error(f'Error: Could not resolve country "{name}"')
             return None
 
         self.config.country_ids[name] = str(country.alpha_2)
@@ -263,12 +258,12 @@ class ADSBData:
         try:
             icao_code_hex = int(ac_icao, 16)
         except ValueError:
-            print(f'Error: "{ac_icao}" is not a valid hex code.')
+            self.logger.error(f'"{ac_icao}" is not a valid hex code.')
             return None
 
         for range in self.config.ac_countries:
             if icao_code_hex >= int(range['start'], 16) and icao_code_hex <= int(range['end'], 16):
                 return self.get_country_id(range['country'])
 
-        print(f'Error: icao code {ac_icao} is not in the range of ac_countries.json.')
+        self.logger.error(f'icao code {ac_icao} is not in the range of ac_countries.json.')
         return None

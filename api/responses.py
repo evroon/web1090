@@ -133,4 +133,65 @@ class AviationStackFlightResponse(BaseModel):
     pagination: AviationStackPagination
 
     def __iter__(self) -> Iterator[AviationStackRealTimeFlight]:  # type: ignore[override]
-        return iter(self.data)  #  # type: ignore[arg-type]
+        return iter(self.data)
+
+
+class SchipholACType(BaseModel):
+    iataMain: str
+    iataSub: str
+
+
+class SchipholRoute(BaseModel):
+    destinations: List[str]
+
+
+class SchipholFlight(BaseModel):
+    mainFlight: str
+    flightName: str
+    flightNumber: str
+    id: str
+    prefixIATA: Optional[str]
+    prefixICAO: Optional[str]
+    aircraftType: SchipholACType
+    aircraftRegistration: Optional[str]
+    route: SchipholRoute
+    flightDirection: str
+
+
+class SchipholFlightListResponse(BaseModel):
+    flights: List[SchipholFlight] = []
+
+    def __iter__(self) -> Iterator[SchipholFlight]:  # type: ignore[override]
+        return iter(self.flights)
+
+
+class VirtualRadarRoute(BaseModel):
+    RouteId: str
+    OperatorId: str
+    OperatorIcao: str
+    OperatorIata: str
+    OperatorName: str
+    FlightNumber: str
+    Callsign: str
+
+    FromAirportId: int
+    FromAirportIcao: str
+    FromAirportIata: str
+    FromAirportName: str
+    FromAirportLatitude: float
+    FromAirportLongitude: float
+    FromAirportAltitude: float
+    FromAirportLocation: str
+    FromAirportCountryId: str
+    FromAirportCountry: str
+
+    ToAirportId: int
+    ToAirportIcao: str
+    ToAirportIata: str
+    ToAirportName: str
+    ToAirportLatitude: float
+    ToAirportLongitude: float
+    ToAirportAltitude: float
+    ToAirportLocation: str
+    ToAirportCountryId: str
+    ToAirportCountry: str

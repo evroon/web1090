@@ -1,5 +1,6 @@
 import json
 from datetime import datetime
+from logging import Logger
 from typing import Any, Dict
 
 
@@ -26,4 +27,5 @@ class Config:
 
     def set_airport_data_window(self, unix_time: int) -> None:
         self.airport_data_window = datetime.utcfromtimestamp(float(unix_time))
-        print(self.airport_data_window)
+        self.logger = Logger('config')
+        self.logger.info(self.airport_data_window)

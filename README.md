@@ -1,6 +1,8 @@
 # WEB1090
 
 [![mypy](https://github.com/evroon/web1090/actions/workflows/mypy.yaml/badge.svg)](https://github.com/evroon/web1090/actions/workflows/mypy.yaml)
+[![isort](https://github.com/evroon/web1090/actions/workflows/isort.yaml/badge.svg)](https://github.com/evroon/web1090/actions/workflows/isort.yaml)
+[![black](https://github.com/evroon/web1090/actions/workflows/black.yaml/badge.svg)](https://github.com/evroon/web1090/actions/workflows/black.yaml)
 
 ![](etc/web1090.png)
 
@@ -16,6 +18,7 @@ The data is fetched from multiple sources. The (web) APIs used are:
 * [Airport-Data](https://www.airport-data.com): Aircraft images
 * [Kiwi.com](https://images.kiwi.com): Airline logos
 * [dump1090-fa](https://github.com/adsbxchange/dump1090-fa): Real-time aircraft tracking by use of ADS-B
+* [Schiphol](https://github.com/adsbxchange/dump1090-fa): Real-time aircraft tracking by use of ADS-B
 
 The data fetched from these sources are used for personal use only.
 The code is written to minimze the load on these APIs.

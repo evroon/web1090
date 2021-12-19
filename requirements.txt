@@ -9,3 +9,5 @@ pydantic
 mypy
 black
 isort
+types-pytz
+types-simplejson

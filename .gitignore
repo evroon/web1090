@@ -9,3 +9,4 @@ api/data/images
 frontend/config.json
 api/data/opensky.csv
 api/data/to_update.csv
+api/data/virtualradar.*

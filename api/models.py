@@ -44,6 +44,7 @@ class Route(Base):
     __tablename__ = "routesdata"
 
     icao = Column(String, primary_key=True, index=True)
+    iata = Column(String)
     number = Column(String)
     airline_name = Column(String)
     airline_iata = Column(String)
