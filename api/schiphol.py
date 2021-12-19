@@ -106,7 +106,7 @@ class Schiphol:
         result += self.collect_flights(params)
         return result
 
-    def store_missing_flight_data(self) -> str:
+    def store_missing_flight_data(self) -> None:
         self.logger.info('Storing missing flight data from the Schiphol API...')
         flights: DUMP1090Response = self.adsbdata.get_live_flights()
         nearby_flights = self.get_nearby_flights()
@@ -136,7 +136,6 @@ class Schiphol:
                     break
 
         self.logger.info('Updated flights: ' + ','.join([x.icao for x in updated_flights]))
-        return 'Missing flight data from Schiphol API is stored.'
 
     def get_actual_route(self, flight_icao: str, aircraft_registration: str) -> Optional[Route]:
         self.logger.info(f'getting route for {flight_icao} - {aircraft_registration}')

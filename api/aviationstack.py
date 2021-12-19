@@ -82,7 +82,7 @@ class AviationStack:
 
             i += pagination
 
-    def store_missing_flight_data(self) -> str:
+    def store_missing_flight_data(self) -> None:
         self.logger.info('Storing missing flight data from aviationstack...')
         max_items = 10
         rows_to_delete = []
@@ -102,9 +102,9 @@ class AviationStack:
                 lines = [x for x in lines if x not in rows_to_delete and x.strip() != '']
                 fw.write('\n'.join(lines) + '\n')
 
-        return 'Missing flight data from aviationstack is stored.'
+        self.logger.info('Missing flight data from aviationstack is stored.')
 
-    def store_airlinedata(self) -> str:
+    def store_airlinedata(self) -> None:
         self.logger.info('Storing airline data from aviationstack...')
         total = 1e8
         pagination = 100
@@ -133,7 +133,7 @@ class AviationStack:
 
             i += pagination
 
-        return 'Aircraft data from aviationstack is stored.'
+        self.logger.info('Aircraft data from aviationstack is stored.')
 
     def store_aircraftdata(self) -> None:
         self.logger.info('Storing aircraft from aviationstack...')

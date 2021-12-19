@@ -66,7 +66,8 @@ async def liveflights(db: Session = Depends(get_db)) -> DUMP1090Response:
 @cache(expire=60)
 async def statistics(db: Session = Depends(get_db)) -> Dict[str, Any]:
     data = ADSBData(db, config)
-    return data.get_statistics()
+    statistics: Dict[str, Any] = data.get_statistics()
+    return statistics
 
 
 @app.get(
@@ -77,7 +78,8 @@ async def statistics(db: Session = Depends(get_db)) -> Dict[str, Any]:
 async def routes(
     skip: int = 0, limit: int = 100, db: Session = Depends(get_db)
 ) -> List[models.Route]:
-    return crud.get_routes_paginated(db, skip, limit)
+    routes: List[models.Route] = crud.get_routes_paginated(db, skip, limit)
+    return routes
 
 
 @app.get(
@@ -88,7 +90,8 @@ async def routes(
 async def aircraft(
     skip: int = 0, limit: int = 100, db: Session = Depends(get_db)
 ) -> List[models.Aircraft]:
-    return crud.get_aircraft_paginated(db, skip, limit)
+    aircraft: List[models.Aircraft] = crud.get_aircraft_paginated(db, skip, limit)
+    return aircraft
 
 
 @app.get(

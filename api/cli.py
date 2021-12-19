@@ -41,8 +41,7 @@ def track_aircraft() -> None:
 def load_data_source(source: str) -> None:
     with SessionLocal() as db:
         data = ADSBData(db, config)
-        task = data.collector.load_data(DataSource(source))
-        logger.info(task)
+        data.collector.load_data(DataSource(source))
 
 
 if __name__ == "__main__":

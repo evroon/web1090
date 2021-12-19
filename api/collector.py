@@ -38,7 +38,7 @@ class Collector:
     def get_db(self) -> Session:
         return self.adsbdata.db
 
-    def store_routedata_virtualradar(self) -> str:
+    def store_routedata_virtualradar(self) -> None:
         self.logger.info('Storing routes...')
         download_url = 'https://www.virtualradarserver.co.uk/Files/StandingData.sqb.gz'
         sqb_gz_path = 'data/virtualradar.sqb.gz'
@@ -77,26 +77,25 @@ class Collector:
 
         self.logger.info('Finished loading routes.')
         conn.close()
-        return 'finished'
 
-    def load_data(self, source: DataSource) -> str:
+    def load_data(self, source: DataSource) -> None:
         self.update_csv()
 
         if source == DataSource.opensky:
-            return self.store_aircraftdata_opensky()
+            self.store_aircraftdata_opensky()
         elif source == DataSource.aviationstack_airlines:
             aviationstack = AviationStack()
-            return aviationstack.store_airlinedata()
+            aviationstack.store_airlinedata()
         elif source == DataSource.aviationstack_missing_routes:
             aviationstack = AviationStack(self.adsbdata)
-            return aviationstack.store_missing_flight_data()
+            aviationstack.store_missing_flight_data()
         elif source == DataSource.schiphol_missing_routes:
             schiphol = Schiphol(self.adsbdata)
-            return schiphol.store_missing_flight_data()
+            schiphol.store_missing_flight_data()
         elif source == DataSource.virtualradar:
-            return self.store_routedata_virtualradar()
+            self.store_routedata_virtualradar()
 
-        return f'invalid source: {source}'
+        self.logger.error(f'invalid source: {source}')
 
     def update_csv(self) -> None:
         with open('data/to_update.csv', 'r') as f:
@@ -108,7 +107,7 @@ class Collector:
                 ]
                 fw.write('\n'.join(lines) + '\n')
 
-    def store_aircraftdata_opensky(self) -> str:
+    def store_aircraftdata_opensky(self) -> None:
         self.logger.info('Storing aircraft data from opensky...')
         csv_path = 'data/opensky.csv'
         download_url = 'https://opensky-network.org/datasets/metadata/aircraftDatabase-2021-12.csv'
@@ -159,7 +158,7 @@ class Collector:
                 self.logger.info(f'Adding {row["registration"]}...')
                 crud.update_aircraft(self.get_db(), aircraft)
 
-        return 'finished'
+        self.logger.info('finished')
 
     def store_aircraftdata_flightaware(self) -> None:
         self.logger.info('Storing aircraft data in postgres...')
