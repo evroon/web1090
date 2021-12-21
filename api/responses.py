@@ -1,7 +1,7 @@
-from typing import Iterator, List, Optional
+from typing import Dict, Iterator, List, Optional
 
 from models import Aircraft, Airline, Route
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class AircraftImagePayload(BaseModel):
@@ -195,3 +195,28 @@ class VirtualRadarRoute(BaseModel):
     ToAirportLocation: str
     ToAirportCountryId: str
     ToAirportCountry: str
+
+
+class GoogleFlightMetaTag(BaseModel):
+    title: Optional[str]
+    origin: Optional[str]
+    airline: Optional[str]
+    destination: Optional[str]
+    aircrafttype: Optional[str]
+    og_url: Optional[str] = Field(..., alias='og:url')
+
+    class Config:
+        allow_population_by_field_name = True
+
+
+class GoogleFlightPageMap(BaseModel):
+    metatags: List[GoogleFlightMetaTag]
+
+
+class GoogleFlight(BaseModel):
+    title: str
+    pagemap: GoogleFlightPageMap
+
+
+class GoogleFlightResponse(BaseModel):
+    items: Optional[List[GoogleFlight]]

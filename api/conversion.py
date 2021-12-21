@@ -2,6 +2,7 @@ from models import Aircraft, Airline, Route
 from responses import (
     AviationStackAirline,
     AviationStackRealTimeFlight,
+    GoogleFlightMetaTag,
     SchipholFlight,
     VirtualRadarRoute,
 )
@@ -30,8 +31,9 @@ def aviationstack_flight_to_route(as_flight: AviationStackRealTimeFlight) -> Rou
 
 def aviationstack_flight_to_aircraft(as_flight: AviationStackRealTimeFlight) -> Aircraft:
     return Aircraft(
-        icao=as_flight.aircraft.icao,
+        icao=as_flight.aircraft.icao24.lower(),
         iata=as_flight.aircraft.iata,
+        model_code=as_flight.aircraft.icao,
         registration=as_flight.aircraft.registration,
     )
 
@@ -82,4 +84,14 @@ def virtualradar_route_to_route(vr_flight: VirtualRadarRoute) -> Route:
         arr_loc=vr_flight.ToAirportLocation,
         arr_country=vr_flight.ToAirportCountry,
         arr_country_id=vr_flight.ToAirportCountryId,
+    )
+
+
+def google_flight_to_route(g_flight: GoogleFlightMetaTag, icao: str) -> Route:
+    return Route(
+        icao=icao,
+        iata=g_flight.title.split(' ')[0] if g_flight.title is not None else None,
+        airline_icao=g_flight.airline,
+        dep_icao=g_flight.origin,
+        arr_icao=g_flight.destination,
     )

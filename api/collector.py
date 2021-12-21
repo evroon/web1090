@@ -12,6 +12,7 @@ import requests
 from aviationstack import AviationStack
 from conversion import virtualradar_route_to_route
 from dotenv import load_dotenv
+from google import Google
 from logger import get_logger
 from responses import VirtualRadarRoute
 from schiphol import Schiphol
@@ -27,6 +28,7 @@ class DataSource(str, Enum):
     aviationstack_airlines = "aviationstack.airlines"
     aviationstack_missing_routes = "aviationstack.missing_routes"
     schiphol_missing_routes = "schiphol.missing_routes"
+    google_missing_routes = 'google.missing_routes'
     virtualradar = "virtualradar"
 
 
@@ -92,6 +94,9 @@ class Collector:
         elif source == DataSource.schiphol_missing_routes:
             schiphol = Schiphol(self.adsbdata)
             schiphol.store_missing_flight_data()
+        elif source == DataSource.google_missing_routes:
+            google = Google(self.adsbdata)
+            google.store_missing_flight_data()
         elif source == DataSource.virtualradar:
             self.store_routedata_virtualradar()
         else:
