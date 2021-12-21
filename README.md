@@ -19,6 +19,7 @@ The data is fetched from multiple sources. The (web) APIs used are:
 * [Kiwi.com](https://images.kiwi.com): Airline logos
 * [dump1090-fa](https://github.com/adsbxchange/dump1090-fa): Real-time aircraft tracking by use of ADS-B
 * [Schiphol flights API](https://developer.schiphol.nl/apis/flight-api/): Real-time flight information for in/outbound flights to/from Schiphol
+* [Google custom search API](https://programmablesearchengine.google.com/about/): Route information by ICAO flight number lookup
 
 The data fetched from these sources are used for personal use only.
 The code is written to minimze the load on these APIs.
