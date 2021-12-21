@@ -60,7 +60,7 @@ class Collector:
 
         conn = sqlite3.connect(sqb_path)
         conn.row_factory = sqlite3.Row
-        cur_in = conn.execute('select * from RouteView ORDER BY id desc')
+        cur_in = conn.execute('select * from RouteView ORDER BY RouteId desc')
         aggregated_route_data = []
         routes = cur_in.fetchall()
 
@@ -94,8 +94,8 @@ class Collector:
             schiphol.store_missing_flight_data()
         elif source == DataSource.virtualradar:
             self.store_routedata_virtualradar()
-
-        self.logger.error(f'invalid source: {source}')
+        else:
+            self.logger.error(f'invalid source: {source}')
 
     def update_csv(self) -> None:
         with open('data/to_update.csv', 'r') as f:

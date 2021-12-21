@@ -35,7 +35,7 @@ def track_aircraft() -> None:
 @click.command()
 @click.option(
     "--source",
-    default='schiphol.missing_routes',
+    default='aviationstack.missing_routes',
     help="Source to get information of.",
 )
 def load_data_source(source: str) -> None:
