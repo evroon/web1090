@@ -74,15 +74,16 @@ class Google:
         with open('data/to_update.csv', 'r') as f:
             lines = f.readlines()
             max_items = min(max_items, len(lines))
-            for _ in range(max_items):
-                flight_number = random.choice(lines).strip()
-                rows_to_delete.append(flight_number)
 
-                self.get_flights_by_icao(flight_icao=flight_number)
+        for _ in range(max_items):
+            flight_number = random.choice(lines).strip()
+            rows_to_delete.append(flight_number)
 
-            # Delete flights that could not be found.
-            with open('data/to_update.csv', 'w') as fw:
-                lines = [x for x in lines if x not in rows_to_delete and x.strip() != '']
-                fw.write('\n'.join(lines) + '\n')
+            self.get_flights_by_icao(flight_icao=flight_number)
+
+        # Delete flights that could not be found.
+        lines = [x for x in lines if x not in rows_to_delete and x.strip() != '']
+        with open('data/to_update.csv', 'w') as fw:
+            fw.write('\n'.join(lines) + '\n')
 
         self.logger.info('Missing flight data from Google is stored.')

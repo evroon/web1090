@@ -83,10 +83,12 @@ class ADSBData:
 
     def get_route_details(self, flight: str) -> None:
         with open('data/to_update.csv', 'r') as f:
-            if not flight in f.read():
-                self.logger.debug(f'get_route_details {flight}')
-                with open('data/to_update.csv', 'a') as f:
-                    f.write(flight + '\n')
+            text = f.read()
+
+        if not flight in text:
+            self.logger.debug(f'get_route_details {flight}')
+            with open('data/to_update.csv', 'a') as f:
+                f.write(flight + '\n')
 
     def get_ac_icon(
         self,

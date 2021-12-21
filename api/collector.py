@@ -106,11 +106,10 @@ class Collector:
         with open('data/to_update.csv', 'r') as f:
             text = f.read()
             lines = text.split('\n')
-            with open('data/to_update.csv', 'w') as fw:
-                lines = [
-                    x for x in lines if crud.get_route(self.get_db(), x) is None and x.strip() != ''
-                ]
-                fw.write('\n'.join(lines) + '\n')
+
+        lines = [x for x in lines if crud.get_route(self.get_db(), x) is None and x.strip() != '']
+        with open('data/to_update.csv', 'w') as fw:
+            fw.write('\n'.join(lines) + '\n')
 
     def store_aircraftdata_opensky(self) -> None:
         self.logger.info('Storing aircraft data from opensky...')
