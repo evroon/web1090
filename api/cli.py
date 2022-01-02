@@ -26,8 +26,8 @@ def track_aircraft() -> None:
     while True:
         with SessionLocal() as db:
             data = ADSBData(db, config)
-            task = data.collector.load_data(DataSource.schiphol_missing_routes)
-            logger.info(task)
+            data.collector.load_data(DataSource.schiphol_missing_routes)
+            data.store_realtime_entry()
 
         time.sleep(60)
 

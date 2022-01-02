@@ -1,7 +1,7 @@
 from typing import List, Optional, cast
 
 import schemas
-from models import Aircraft, AircraftImage, Airline, Route
+from models import Aircraft, AircraftImage, Airline, Realtime, Route
 from sqlalchemy.orm import Session
 
 
@@ -21,12 +21,14 @@ def create_aircraft(db: Session, db_aircraft: Aircraft) -> Aircraft:
     return cast(Aircraft, db_aircraft)
 
 
-def update_aircraft(db: Session, db_aircraft: Aircraft) -> None:
+def update_aircraft(db: Session, db_aircraft: Aircraft) -> bool:
     if get_aircraft(db, db_aircraft.icao) is None:
         create_aircraft(db, db_aircraft)
+        return True
 
     db.merge(db_aircraft)
     db.commit()
+    return False
 
 
 def get_registrations_count(db: Session) -> int:
@@ -152,3 +154,11 @@ def update_route_airport_data(db: Session, db_route: Route) -> None:
     db_route.arr_alt = arr_airport.arr_alt
 
     update_route(db, db_route)
+
+
+# Realtime
+def create_realtime_entry(db: Session, db_realtime: Realtime) -> Realtime:
+    db.add(db_realtime)
+    db.commit()
+    db.refresh(db_realtime)
+    return cast(Airline, db_realtime)

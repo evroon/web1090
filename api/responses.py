@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Dict, Iterator, List, Optional
 
 from models import Aircraft, Airline, Route
@@ -94,6 +95,35 @@ class AviationStackAirlineResponse(BaseModel):
         return iter(self.data)
 
 
+class AviationStackAircraft(BaseModel):
+    id: int
+    icao_code_hex: Optional[str]
+    iata_code_long: Optional[str]
+    registration_number: Optional[str]
+    iata_type: Optional[str]
+    production_line: Optional[str]
+    airline_iata_code: Optional[str]
+    model_name: Optional[str]
+    model_code: Optional[str]
+    iata_code_short: Optional[str]
+    construction_number: Optional[str]
+    test_registration_number: Optional[str]
+    plane_owner: Optional[str]
+    delivery_date: Optional[str]
+    first_flight_date: Optional[str]
+    registration_date: Optional[str]
+    rollout_date: Optional[str]
+    plane_status: Optional[str]
+
+
+class AviationStackAircraftResponse(BaseModel):
+    data: List[AviationStackAircraft]
+    pagination: AviationStackPagination
+
+    def __iter__(self) -> Iterator[AviationStackAircraft]:  # type: ignore
+        return iter(self.data)
+
+
 class AviationStackAirport(BaseModel):
     airport: Optional[str]
     timezone: Optional[str]
@@ -113,7 +143,7 @@ class AviationStackFlight(BaseModel):
     icao: Optional[str]
 
 
-class AviationStackAircraft(BaseModel):
+class AviationStackFlightAircraft(BaseModel):
     registration: Optional[str]
     iata: Optional[str]
     icao: Optional[str]
@@ -125,7 +155,7 @@ class AviationStackRealTimeFlight(BaseModel):
     arrival: AviationStackAirport
     airline: AviationStackFlightAirline
     flight: AviationStackFlight
-    aircraft: AviationStackAircraft
+    aircraft: Optional[AviationStackFlightAircraft]
 
 
 class AviationStackFlightResponse(BaseModel):
@@ -203,7 +233,7 @@ class GoogleFlightMetaTag(BaseModel):
     airline: Optional[str]
     destination: Optional[str]
     aircrafttype: Optional[str]
-    og_url: Optional[str] = Field(..., alias='og:url')
+    og_url: Optional[str] = Field(None, alias='og:url')
 
     class Config:
         allow_population_by_field_name = True

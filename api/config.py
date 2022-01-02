@@ -9,6 +9,11 @@ class Config:
         self.cached_routes: Dict[str, Any] = {}
         self.cached_aircraft: Dict[str, Any] = {}
         self.country_ids: Dict[str, str] = {}
+        self.ac_logos_path = 'data/logos'
+        self.aircraft_to_update_path = 'data/aircraft_to_update.csv'
+        self.routes_to_update_path = 'data/routes_to_update.csv'
+        self.opensky_csv_path = 'data/opensky.csv'
+        self.piaware_ac_db_path = '/usr/share/dump1090-fa/html/db/'
 
         with open('data/country_aliases.json', 'r') as f:
             self.country_aliases = json.load(f)

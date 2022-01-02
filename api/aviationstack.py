@@ -1,16 +1,23 @@
 import os
 import random
+from collections import Counter
 from typing import Any, Dict, Optional
 
 import crud
 import requests
 from conversion import (
+    aviationstack_aircraft_to_aircraft,
     aviationstack_airline_to_airline,
     aviationstack_flight_to_aircraft,
     aviationstack_flight_to_route,
 )
 from logger import get_logger
-from responses import AviationStackAirlineResponse, AviationStackFlightResponse
+from pydantic.error_wrappers import ValidationError
+from responses import (
+    AviationStackAircraftResponse,
+    AviationStackAirlineResponse,
+    AviationStackFlightResponse,
+)
 
 AVIATIONSTACK_KEY = str(os.getenv('AVIATIONSTACK_KEY')).split(',')
 
@@ -21,6 +28,7 @@ class AviationStack:
     def __init__(self, data: Any) -> None:
         self.adsbdata = data
         self.db = data.db
+        self.config = data.config
 
     def _send_request(self, endpoint: str, params: Dict[str, Any]) -> Dict[str, Any]:
         access_key = random.choice(AVIATIONSTACK_KEY)
@@ -58,7 +66,7 @@ class AviationStack:
         i = 0
 
         while i < total:
-            self.logger.info(f'Collecting Aviationstack flights for {flight_icao}: {i} / {total}')
+            self.logger.info(f'Collecting Aviationstack flights for {airline_icao}: {i} / {total}')
             params: Dict[str, Any] = {'offset': i}
 
             if airline_icao is not None:
@@ -71,14 +79,19 @@ class AviationStack:
             if api_response == {}:
                 return
 
-            flights: AviationStackFlightResponse = AviationStackFlightResponse.parse_obj(
-                api_response
-            )
-            total = flights.pagination.total
+            try:
+                flights: AviationStackFlightResponse = AviationStackFlightResponse.parse_obj(
+                    api_response
+                )
+                total = flights.pagination.total
+            except ValidationError as e:
+                self.logger.error(e)
+                raise
 
             for _, flight in enumerate(flights):
                 crud.update_route(self.db, aviationstack_flight_to_route(flight))
-                crud.update_aircraft(self.db, aviationstack_flight_to_aircraft(flight))
+                if flight.aircraft:
+                    crud.update_aircraft(self.db, aviationstack_flight_to_aircraft(flight))
 
             i += pagination
 
@@ -87,20 +100,25 @@ class AviationStack:
         max_items = 10
         rows_to_delete = []
 
-        with open('data/to_update.csv', 'r') as f:
-            lines = f.readlines()
-            max_items = min(max_items, len(lines))
+        with open(self.config.routes_to_update_path, 'r') as f:
+            lines = [x.strip() for x in f.readlines()]
+            airlines = [x[:3] for x in lines]
+            top_airlines = Counter(airlines).most_common(max_items)
+            max_items = len(top_airlines)
 
         for i in range(max_items):
-            flight_number = random.choice(lines).strip()
-            rows_to_delete.append(flight_number)
-            self.logger.info(f'{flight_number} {i} / {max_items}')
+            airline_icao = top_airlines[i][0]
 
-            self.get_flights_by_icao(flight_icao=flight_number)
+            for j, l in enumerate(lines):
+                if l.startswith(airline_icao):
+                    rows_to_delete.append(l)
+
+            self.logger.info(f'{airline_icao} {i} / {max_items}')
+            self.get_flights_by_icao(airline_icao=airline_icao)
 
         # Delete flights that could not be found.
-        lines = [x for x in lines if x not in rows_to_delete and x.strip() != '']
-        with open('data/to_update.csv', 'w') as fw:
+        lines = [x for x in lines if x not in rows_to_delete and x != '']
+        with open(self.config.routes_to_update_path, 'w') as fw:
             fw.write('\n'.join(lines) + '\n')
 
         self.logger.info('Missing flight data from aviationstack is stored.')
@@ -143,65 +161,20 @@ class AviationStack:
         i = 0
 
         while i < total:
-            params = {
-                'offset': i,
-            }
+            params = {'offset': i}
             api_response = self._send_request('airplanes', params)
-            total = api_response['pagination']['total']
+            aircraft_list: AviationStackAircraftResponse = AviationStackAircraftResponse.parse_obj(
+                api_response
+            )
+            total = aircraft_list.pagination.total
             self.logger.info(f'Aviationstack aircraft: {i} / {total}')
 
-            aggregated_data = []
-
-            for aircraft in api_response['data']:
-                if aircraft['icao_code_hex'] is None:
+            for as_aircraft in aircraft_list:
+                if as_aircraft.icao_code_hex is None:
                     continue
 
-                icao = aircraft['icao_code_hex'].upper()
-                ac_type = aircraft['iata_code_long']
-
-                # One aircraft in aviationstack has an invalid hex code with O instead of 0.
-                icao = icao.replace('O', '0')
-
-                delivery_date = (
-                    aircraft['delivery_date'] if aircraft['delivery_date'] != '0000-00-00' else None
-                )
-                first_flight_date = (
-                    aircraft['first_flight_date']
-                    if aircraft['first_flight_date'] != '0000-00-00'
-                    else None
-                )
-                registration_date = (
-                    aircraft['registration_date']
-                    if aircraft['registration_date'] != '0000-00-00'
-                    else None
-                )
-                rollout_date = (
-                    aircraft['rollout_date'] if aircraft['rollout_date'] != '0000-00-00' else None
-                )
-
-                aggregated_data.append(
-                    {
-                        'aviationstack_id': aircraft['id'],
-                        'icao': icao,
-                        'registration': aircraft['registration_number'],
-                        'aircrafttype': ac_type,
-                        'country': self.adsbdata.get_country(icao),
-                        'category': self.adsbdata.get_category(ac_type),
-                        'family': self.adsbdata.get_family(ac_type),
-                        'airline_iata': aircraft['airline_iata_code'],
-                        'plane_owner': aircraft['plane_owner'],
-                        'model_name': aircraft['model_name'],
-                        'model_code': aircraft['model_code'],
-                        'production_line': aircraft['production_line'],
-                        'delivery_date': delivery_date,
-                        'first_flight_date': first_flight_date,
-                        'registration_date': registration_date,
-                        'rollout_date': rollout_date,
-                        'active': aircraft['plane_status'] == 'active',
-                        'favorite': False,
-                        'needs_update': False,
-                    }
-                )
+                db_aircraft = aviationstack_aircraft_to_aircraft(self.adsbdata, as_aircraft)
+                crud.update_aircraft(self.db, db_aircraft)
 
             i += pagination
 

@@ -1,4 +1,5 @@
 import os
+from datetime import datetime
 from typing import Any, Dict, Iterator, Optional
 
 import crud
@@ -7,6 +8,7 @@ import requests
 from collector import Collector
 from config import Config
 from logger import get_logger
+from models import Realtime
 from responses import AircraftImagePayload, DUMP1090Response
 from sqlalchemy.orm.session import Session
 
@@ -30,7 +32,21 @@ class ADSBData:
             'live_flight_count': len(list(live_flights)),
             'routes_count': routes,
             'registrations_count': registrations,
+            'missing_routes': self.get_missing_routes(),
+            'missing_aircraft': self.get_missing_aircraft(),
+            'airline_logos': self.get_airline_logos(),
         }
+
+    def get_missing_routes(self) -> int:
+        with open(self.config.routes_to_update_path, 'r') as f:
+            return len(f.readlines())
+
+    def get_missing_aircraft(self) -> int:
+        with open(self.config.aircraft_to_update_path, 'r') as f:
+            return len(f.readlines())
+
+    def get_airline_logos(self) -> int:
+        return len(os.listdir(self.config.ac_logos_path))
 
     def get_live_flights(self) -> DUMP1090Response:
         response = requests.get('http://localhost:8080/data/aircraft.json')
@@ -52,7 +68,7 @@ class ADSBData:
                 if route is not None:
                     iata = route.airline_iata
 
-                    if self.get_airline_icon(iata) is not None:
+                    if iata and self.get_airline_icon(iata) is not None:
                         ac.airline_icon = f"airline_icon.svg?iata={iata}"
                 elif (
                     ac_type is None
@@ -78,17 +94,30 @@ class ADSBData:
                             }
                         )
                     )
+            if not ac_type or not ac_type.registration or not ac_type.aircrafttype:
+                self.get_aircraft_details(
+                    icao, ac_type.registration if ac_type is not None else None
+                )
 
         return response_json
 
     def get_route_details(self, flight: str) -> None:
-        with open('data/to_update.csv', 'r') as f:
+        with open(self.config.routes_to_update_path, 'r') as f:
             text = f.read()
 
         if not flight in text:
             self.logger.debug(f'get_route_details {flight}')
-            with open('data/to_update.csv', 'a') as f:
+            with open(self.config.routes_to_update_path, 'a') as f:
                 f.write(flight + '\n')
+
+    def get_aircraft_details(self, icao: str, registration: Optional[str]) -> None:
+        with open(self.config.aircraft_to_update_path, 'r') as f:
+            text = f.read()
+
+        if not icao in text:
+            self.logger.debug(f'get_aircraft_details {icao}')
+            with open(self.config.aircraft_to_update_path, 'a') as f:
+                f.write(icao + (' ' + registration if registration is not None else '') + '\n')
 
     def get_ac_icon(
         self,
@@ -269,3 +298,8 @@ class ADSBData:
 
         self.logger.error(f'icao code {ac_icao} is not in the range of ac_countries.json.')
         return None
+
+    def store_realtime_entry(self) -> None:
+        data = self.get_statistics()
+        entry = Realtime(timestamp=datetime.now(), data=data)
+        crud.create_realtime_entry(self.get_db(), entry)

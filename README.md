@@ -12,7 +12,7 @@ The frontend is based on the AdminLTE template. The API is based on FastAPI.
 
 ## Data
 The data is fetched from multiple sources. The (web) APIs used are:
-* [AviationStack](https://aviationstack.com/documentation): Aircraft information
+* [AviationStack](https://aviationstack.com/documentation): Aircraft and route information
 * [FlightAware's tools](https://github.com/flightaware/dump1090/tree/master/tools): Aircraft information
 * [VirtualRadar](https://www.virtualradarserver.co.uk/FlightRoutes.aspx): Route information
 * [Airport-Data](https://www.airport-data.com): Aircraft images

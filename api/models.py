@@ -1,6 +1,7 @@
 from database import Base
 from sqlalchemy import Boolean, Column, Integer, String
-from sqlalchemy.sql.sqltypes import Float, Time
+from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.sql.sqltypes import DateTime, Float, Time
 
 
 class AircraftImage(Base):
@@ -88,3 +89,11 @@ class Airline(Base):
     hub_code = Column(String)
     country_name = Column(String)
     country_iso2 = Column(String)
+
+
+class Realtime(Base):
+    __tablename__ = "realtimedata"
+
+    id = Column(Integer, primary_key=True, index=True)
+    timestamp = Column(DateTime, nullable=False)
+    data = Column(JSONB, nullable=False)

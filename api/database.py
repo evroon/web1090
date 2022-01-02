@@ -37,6 +37,7 @@ class Database:
     AIRCRAFTDATA_DB = 'aircraftdata'
     AIRCRAFT_IMAGES_DB = 'aircraftimages'
     AIRPORTDATA_DB = 'airportdata'
+    REALTIMEDATA_DB = 'realtimedata'
 
     logger = Logger('web1090')
 

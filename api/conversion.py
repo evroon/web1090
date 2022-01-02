@@ -1,5 +1,8 @@
+from typing import Any
+
 from models import Aircraft, Airline, Route
 from responses import (
+    AviationStackAircraft,
     AviationStackAirline,
     AviationStackRealTimeFlight,
     GoogleFlightMetaTag,
@@ -31,10 +34,50 @@ def aviationstack_flight_to_route(as_flight: AviationStackRealTimeFlight) -> Rou
 
 def aviationstack_flight_to_aircraft(as_flight: AviationStackRealTimeFlight) -> Aircraft:
     return Aircraft(
-        icao=as_flight.aircraft.icao24.lower(),
-        iata=as_flight.aircraft.iata,
+        icao=as_flight.aircraft.icao24.upper(),
         model_code=as_flight.aircraft.icao,
         registration=as_flight.aircraft.registration,
+    )
+
+
+def aviationstack_aircraft_to_aircraft(
+    adsbdata: Any, as_aircraft: AviationStackAircraft
+) -> Aircraft:
+    # One aircraft in aviationstack has an invalid hex code with O instead of 0.
+    icao = as_aircraft.icao_code_hex.upper()
+    icao = icao.replace('O', '0')
+
+    ac_type = as_aircraft.iata_code_long
+
+    delivery_date = as_aircraft.delivery_date if as_aircraft.delivery_date != '0000-00-00' else None
+    first_flight_date = (
+        as_aircraft.first_flight_date if as_aircraft.first_flight_date != '0000-00-00' else None
+    )
+    registration_date = (
+        as_aircraft.registration_date if as_aircraft.registration_date != '0000-00-00' else None
+    )
+    rollout_date = as_aircraft.rollout_date if as_aircraft.rollout_date != '0000-00-00' else None
+
+    return Aircraft(
+        aviationstack_id=as_aircraft.id,
+        icao=icao,
+        registration=as_aircraft.registration_number,
+        aircrafttype=ac_type,
+        country=adsbdata.get_country(icao),
+        category=adsbdata.get_category(ac_type),
+        family=adsbdata.get_family(ac_type),
+        airline_iata=as_aircraft.airline_iata_code,
+        plane_owner=as_aircraft.plane_owner,
+        model_name=as_aircraft.model_name,
+        model_code=as_aircraft.model_code,
+        production_line=as_aircraft.production_line,
+        delivery_date=delivery_date,
+        first_flight_date=first_flight_date,
+        registration_date=registration_date,
+        rollout_date=rollout_date,
+        active=as_aircraft.plane_status == 'active',
+        favorite=False,
+        needs_update=False,
     )
 
 
@@ -94,4 +137,20 @@ def google_flight_to_route(g_flight: GoogleFlightMetaTag, icao: str) -> Route:
         airline_icao=g_flight.airline,
         dep_icao=g_flight.origin,
         arr_icao=g_flight.destination,
+    )
+
+
+def google_flight_to_aircraft(
+    g_flight: GoogleFlightMetaTag, adsbdata: Any, icao: str, registration: str
+) -> Aircraft:
+    return Aircraft(
+        icao=icao,
+        aircrafttype=g_flight.aircrafttype,
+        registration=registration,
+        country=adsbdata.get_country(icao),
+        category=adsbdata.get_category(g_flight.aircrafttype),
+        family=adsbdata.get_family(g_flight.aircrafttype),
+        active=True,
+        favorite=False,
+        needs_update=False,
     )
