@@ -4,6 +4,10 @@
 [![isort](https://github.com/evroon/web1090/actions/workflows/isort.yaml/badge.svg)](https://github.com/evroon/web1090/actions/workflows/isort.yaml)
 [![black](https://github.com/evroon/web1090/actions/workflows/black.yaml/badge.svg)](https://github.com/evroon/web1090/actions/workflows/black.yaml)
 
+> [!WARNING]
+> This project is archived and won't receive updates anymore. You can still use it as an example of how to get data from various aviation APIs.
+
+
 ![](etc/web1090.png)
 
 WEB1090 serves as a dashboard for your ADS-B data. It stores data from DUMP1090 in a PostgreSQL database and displays the data via an API and frontend to the user.
